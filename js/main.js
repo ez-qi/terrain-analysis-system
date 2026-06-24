@@ -67,6 +67,8 @@ function updateContourWidth(width) {
 window.onload = () => {
     initLeafletMap();
     initThree();
+    // 初始化等高距控件状态（根据自动/手动）
+    if (typeof toggleAutoSpacing === 'function') toggleAutoSpacing();
     
     raycaster = new THREE.Raycaster();
     mouse = new THREE.Vector2();
@@ -94,11 +96,18 @@ window.onload = () => {
         drawSelectionBox(activeLat, activeLon);
     });
     
+    // 滑动时即时更新着色器 uniform（预览），释放时重建文字标注（无需重建地形）
     document.getElementById('contourSpacing').addEventListener('input', (e) => {
-        document.getElementById('contourSpacingVal').innerText = e.target.value + " 米";
-        if (terrainMesh && !document.getElementById('autoContourSpacing').checked) {
-            const exaggeration = parseFloat(document.getElementById('exaggeration').value);
-            terrainMesh.material.uniforms.uContourSpacing.value = parseFloat(e.target.value) * exaggeration;
+        const v = e.target.value;
+        document.getElementById('contourSpacingVal').innerText = v + " 米";
+        if (!document.getElementById('autoContourSpacing').checked && typeof updateContourSpacing === 'function') {
+            updateContourSpacing(v, false);
+        }
+    });
+
+    document.getElementById('contourSpacing').addEventListener('change', (e) => {
+        if (!document.getElementById('autoContourSpacing').checked && typeof updateContourSpacing === 'function') {
+            updateContourSpacing(e.target.value, true);
         }
     });
     
