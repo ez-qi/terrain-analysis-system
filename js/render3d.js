@@ -259,7 +259,7 @@ function loadSatelliteTexture(material) {
     }
 
     const zoom = 12;
-    const staticUrl = `https://api.tianditu.gov.cn/staticimage?center=${activeLon},${activeLat}&width=1024&height=1024&zoom=${zoom}&layers=img_c&tk=${TDT_TK}`;
+    const staticUrl = `https://api.tianditu.gov.cn/staticimage?center=${activeLon},${activeLat}&width=1024&height=1024&zoom=${zoom}&layers=img_c&tk=${getTdtTk()}`;
 
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin('anonymous');

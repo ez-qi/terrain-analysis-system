@@ -1,7 +1,8 @@
 // DeepSeek GIS Agent 地理语义翻译控制模块
 
 async function callLLMToAnalyzeRegion(userQuery) {
-    if (!apiKey || apiKey.trim() === "") {
+    const localKey = getApiKey();
+    if (!localKey || localKey.trim() === "") {
         showBanner("⚠️ 本地未配置 DeepSeek 密钥 (apiKey)，已自动飞往默认地质坐标轴！", true);
         return;
     }
@@ -41,7 +42,7 @@ async function callLLMToAnalyzeRegion(userQuery) {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
+                'Authorization': `Bearer ${localKey}`
             },
             body: JSON.stringify(payload)
         });
