@@ -72,3 +72,52 @@ async function callLLMToAnalyzeRegion(userQuery) {
         loadingEl.style.display = 'none';
     }
 }
+
+async function fetchEcoDisasterAnalysis(locationName, apiKey) {
+    const localKey = apiKey || getApiKey();
+    if (!localKey || localKey.trim() === "") {
+        throw new Error("未配置 DeepSeek API 密钥，无法执行生态灾害分析。");
+    }
+
+    const url = `https://api.deepseek.com/chat/completions`;
+    const systemPrompt = `
+你是一个资深的地质与生态学专家系统。
+任务：根据用户输入的山脉/地区名，分析该地的典型自然地学属性。
+强制返回合法 JSON 格式，不输出任何多余字符：
+{
+    "climate": "简述所属气候带与降水特征",
+    "soil": "该地常见的土壤类型(如黄壤、红壤等)",
+    "vegTrend": "主要植被带类型及南北坡差异",
+    "baseVegCoverage": 0.85 // 估算该地宏观的平均植被覆盖率 (0.0 到 1.0 的浮点数)
+}`;
+
+    const payload = {
+        model: "deepseek-chat",
+        messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `请分析：${locationName}` }
+        ],
+        response_format: { type: "json_object" }
+    };
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localKey}`
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) throw new Error("大模型生态评估请求失败");
+
+    const result = await response.json();
+    let jsonText = result.choices?.[0]?.message?.content || '';
+    jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    try {
+        return JSON.parse(jsonText);
+    } catch (e) {
+        throw new Error('解析模型返回的 JSON 失败: ' + e.message + '\n原始返回: ' + jsonText);
+    }
+}

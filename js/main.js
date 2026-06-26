@@ -205,6 +205,10 @@ async function generate3DTerrain() {
 
     const initialWaterHeight = parseFloat(document.getElementById('waterHeight').value) * exaggeration;
 
+    let textureModeEnum = 0.0;
+    if (textureMode === 'satellite') textureModeEnum = 1.0;
+    else if (textureMode === 'riskMap') textureModeEnum = 2.0;
+
     const terrainMaterial = new THREE.ShaderMaterial({
         vertexShader: terrainVertexShader,
         fragmentShader: terrainFragmentShader,
@@ -213,13 +217,15 @@ async function generate3DTerrain() {
             uContourSpacing: { value: spacing * exaggeration },
             uContourColor: { value: new THREE.Color(contourColor) },
             uContourLineWidth: { value: contourLineWidth },
-            uTextureMode: { value: 0.0 }, // 默认先用着色渲染
+            uTextureMode: { value: textureModeEnum },
             uSatelliteTex: { value: new THREE.Texture() },
             uSunDirection: { value: sunVector },
             uWaterHeight: { value: initialWaterHeight },
+            uPrecipitation: { value: parseFloat(document.getElementById('precipitation')?.value || 0) },
+            uBaseVeg: { value: 0.7 },
             uTime: { value: 0.0 }
         },
-        extensions: { derivatives: true } 
+        extensions: { derivatives: true }
     });
 
     terrainMesh = new THREE.Mesh(geometry, terrainMaterial);
@@ -308,6 +314,53 @@ window.onload = async () => {
     document.getElementById('textureMode').addEventListener('change', () => {
         generate3DTerrain();
     });
+
+    const precipitationSlider = document.getElementById('precipitation');
+    if (precipitationSlider) {
+        precipitationSlider.addEventListener('input', (e) => {
+            const val = e.target.value;
+            const precipValEl = document.getElementById('precipVal');
+            if (precipValEl) precipValEl.innerText = val + " mm";
+            if (terrainMesh && terrainMesh.material.uniforms && terrainMesh.material.uniforms.uPrecipitation) {
+                terrainMesh.material.uniforms.uPrecipitation.value = parseFloat(val);
+            }
+        });
+    }
+
+    const aiEcoBtn = document.getElementById('aiEcoBtn');
+    if (aiEcoBtn) {
+        aiEcoBtn.addEventListener('click', async () => {
+            const currentApiKey = getApiKey();
+            if (!currentApiKey) { alert("缺少API密钥"); return; }
+
+            try {
+                aiEcoBtn.innerText = "⏳ AI 地学深度分析中...";
+                const ecoData = await fetchEcoDisasterAnalysis(activeName, currentApiKey);
+
+                const ecoClimateEl = document.getElementById('ecoClimate');
+                const ecoSoilEl = document.getElementById('ecoSoil');
+                const ecoVegBaseEl = document.getElementById('ecoVegBase');
+                const ecoResultPanel = document.getElementById('ecoResultPanel');
+
+                if (ecoClimateEl) ecoClimateEl.innerText = ecoData.climate || "N/A";
+                if (ecoSoilEl) ecoSoilEl.innerText = ecoData.soil || "N/A";
+                if (ecoVegBaseEl) ecoVegBaseEl.innerText = ecoData.baseVegCoverage != null ? ecoData.baseVegCoverage : "N/A";
+                if (ecoResultPanel) ecoResultPanel.classList.remove('hidden');
+
+                if (terrainMesh && terrainMesh.material.uniforms && terrainMesh.material.uniforms.uBaseVeg) {
+                    terrainMesh.material.uniforms.uBaseVeg.value = parseFloat(ecoData.baseVegCoverage) || 0.7;
+                }
+
+                document.getElementById('textureMode').value = 'riskMap';
+                generate3DTerrain();
+            } catch (e) {
+                console.error(e);
+                alert("AI 推演失败，请重试");
+            } finally {
+                aiEcoBtn.innerText = "🌍 一键 AI 生态要素提取与灾害推演";
+            }
+        });
+    }
 
     generate3DTerrain();
 };

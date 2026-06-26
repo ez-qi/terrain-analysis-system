@@ -161,16 +161,30 @@
                     <input type="range" id="lightAzimuth" min="0" max="360" step="5" value="45" oninput="updateSunDirection(this.value)">
                 </div>
 
+                <div class="slider-container">
+                    <label><span>AI 生态灾害降雨量</span> <span id="precipVal" class="text-cyan-400 font-bold">0 mm</span></label>
+                    <input type="range" id="precipitation" min="0" max="800" step="10" value="0">
+                </div>
+
                 <div class="flex items-center justify-between bg-slate-900 bg-opacity-50 p-2 rounded border border-slate-800 text-xs">
                     <span class="text-slate-400">材质贴图来源</span>
                     <select id="textureMode" class="bg-slate-800 text-white rounded p-1 outline-none">
                         <option value="satellite">🛰️ 天地图真实卫星影像</option>
                         <option value="procedural">🎨 智能高程分色渲染</option>
+                        <option value="riskMap">🌋 AI 灾害风险热力图</option>
                     </select>
                 </div>
+
+                <button id="aiEcoBtn" class="btn-ai mt-2">🌍 一键 AI 生态要素提取与灾害推演</button>
             </div>
         </div>
 
+        <div id="ecoResultPanel" class="control-group hidden">
+            <div class="text-xs text-blue-400 font-bold mb-1">AI 生态灾害分析结果</div>
+            <div class="text-xs text-slate-300 mb-1">气候: <span id="ecoClimate" class="text-white">--</span></div>
+            <div class="text-xs text-slate-300 mb-1">土壤: <span id="ecoSoil" class="text-white">--</span></div>
+            <div class="text-xs text-slate-300">植被覆盖率: <span id="ecoVegBase" class="text-emerald-400 font-semibold">--</span></div>
+        </div>
         <button id="generateBtn" class="btn-primary mt-1">🚀 对应生成所选区域局部地形</button>
     </div>
 

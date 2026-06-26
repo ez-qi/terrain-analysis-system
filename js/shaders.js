@@ -12,6 +12,8 @@ void main() {
 }
 `;
 
+
+
 const terrainFragmentShader = `
 varying vec3 vPosition;
 varying vec3 vNormal;
@@ -20,21 +22,64 @@ varying vec2 vUv;
 uniform float uShowContours;
 uniform float uContourSpacing;
 uniform vec3 uContourColor;
-uniform float uContourLineWidth;
-uniform float uTextureMode;
+uniform float uContourLineWidth; 
+uniform float uTextureMode; 
 uniform sampler2D uSatelliteTex;
-uniform vec3 uSunDirection;
+uniform vec3 uSunDirection;      
 
-// 水体仿真控制参数
-uniform float uWaterHeight;
-uniform float uTime;
+uniform float uWaterHeight; 
+uniform float uTime;        
+
+// 【新增】灾害推演 Uniforms
+uniform float uPrecipitation; // 降水量 (mm)
+uniform float uBaseVeg;       // AI评估的基准植被覆盖率 (0.0~1.0)
 
 void main() {
     vec3 baseColor;
     vec3 norm = normalize(vNormal);
-    float slope = 1.0 - max(0.0, dot(norm, vec3(0.0, 1.0, 0.0)));
+    
+    // 1. 提取坡度 (0.0=平地, 1.0=90度垂直峭壁)
+    float slope = 1.0 - max(0.0, dot(norm, vec3(0.0, 1.0, 0.0))); 
 
-    if (uTextureMode > 0.5) {
+    if (uTextureMode > 1.5) {
+        // ==========================================
+        // 🚨 模式3：滑坡/泥石流灾害风险热力图
+        // ==========================================
+        
+        // A. 提取山体坡向 (Aspect): 假定 Z>0为南(向阳), Z<0为北(向阴)
+        float aspect = dot(normalize(vec3(norm.x, 0.0, norm.z)), vec3(0.0, 0.0, 1.0));
+        
+        // B. 植被覆盖动态修正模型
+        // 坡度越陡峭 (slope > 0.4)，植被越难以附着，覆盖率断崖式下跌
+        float slopePenalty = smoothstep(0.3, 0.7, slope);
+        float localVeg = uBaseVeg * (1.0 - slopePenalty * 0.8);
+        
+        // 向阴面(北坡)土壤水分挥发少，植被通常好于向阳面
+        localVeg += (aspect < 0.0 ? 0.08 : -0.05); 
+        localVeg = clamp(localVeg, 0.0, 1.0);
+        
+        // C. 灾害风险动力学公式 (Heuristic Model)
+        // 风险正比于坡度骤变因子、降水因子，反比于局部植被固土能力
+        float precipFactor = clamp(uPrecipitation / 800.0, 0.0, 1.0);
+        float slopeRisk = smoothstep(0.15, 0.65, slope); // 危险坡度区间
+        
+        // 综合灾害指数 (0.0 ~ 1.0)
+        float risk = slopeRisk * precipFactor * (1.2 - localVeg);
+        risk = clamp(risk, 0.0, 1.0);
+        
+        // D. 热力图设色 (绿 -> 黄 -> 橙 -> 红)
+        vec3 safeColor = vec3(0.1, 0.7, 0.2);   // 安全区 (低风险)
+        vec3 warnColor = vec3(0.9, 0.8, 0.1);   // 警告区 (黄)
+        vec3 dangerColor = vec3(0.9, 0.1, 0.1); // 极危区 (红)
+        
+        vec3 riskColor = mix(safeColor, warnColor, smoothstep(0.0, 0.5, risk));
+        riskColor = mix(riskColor, dangerColor, smoothstep(0.5, 1.0, risk));
+        
+        // 与地形灰度叠加保留立体凹凸阴影感
+        float gray = dot(vec3(0.38, 0.31, 0.21), vec3(0.333));
+        baseColor = mix(vec3(gray), riskColor, 0.85);
+
+    } else if (uTextureMode > 0.5) {
         baseColor = texture2D(uSatelliteTex, vUv).rgb;
     } else {
         vec3 dirtColor = vec3(0.38, 0.31, 0.21);
