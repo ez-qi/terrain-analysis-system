@@ -6,7 +6,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>区域等高线与三维地形智能分析系统</title>
-
+    <link rel="stylesheet" href="css/style.css">
     <!-- Tailwind CSS 提升界面质感 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 轻量稳定 Leaflet 2D 交互地图 -->
@@ -16,39 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
-    <style>
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: #0b0f19; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #appContainer { display: flex; width: 100vw; height: 100vh; }
-        #sidebar { width: 420px; height: 100vh; background: rgba(15, 23, 42, 0.95); padding: 20px; box-sizing: border-box; overflow-y: auto; z-index: 10; border-right: 1px solid #1e293b; display: flex; flex-direction: column; gap: 15px; }
-        #viewport-container { flex-grow: 1; height: 100%; position: relative; }
-        #leafletMap { width: 100%; height: 180px; border-radius: 8px; border: 1px solid #334155; margin-top: 5px; }
-        #threeCanvas { width: 100%; height: 100%; }
-        
-        textarea { width: 100%; background: #0f172a; color: #fff; border: 1px solid #334155; padding: 8px; font-family: monospace; font-size: 12px; border-radius: 6px; resize: none; }
-        textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 5px rgba(59,130,246,0.5); }
-        
-        button { width: 100%; padding: 10px; color: white; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer; transition: all 0.3s; display: flex; justify-content: center; align-items: center; gap: 8px;}
-        .btn-ai { background: linear-gradient(135deg, #3b82f6, #8b5cf6); box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3); }
-        .btn-ai:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5); }
-        .btn-primary { background: linear-gradient(135deg, #e94560, #ff5277); box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3); }
-        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(233, 69, 96, 0.5); }
-        
-        .preset-tag { padding: 4px 10px; background: #1e293b; border: 1px solid #334155; border-radius: 12px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; color: #94a3b8; }
-        .preset-tag:hover { background: #3b82f6; border-color: #3b82f6; color: white; }
-
-        #loading { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(11, 15, 25, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; display: none; backdrop-filter: blur(4px); }
-        .spinner { border: 4px solid rgba(255,255,255,0.1); width: 50px; height: 50px; border-radius: 50%; border-left-color: #3b82f6; animation: spin 1s linear infinite; margin-bottom: 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .info-panel { position: absolute; bottom: 30px; right: 20px; background: rgba(15, 23, 42, 0.85); padding: 15px; border-radius: 8px; border: 1px solid #334155; z-index: 10; backdrop-filter: blur(4px); pointer-events: none; }
-        .slider-container label { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 3px; color: #94a3b8; }
-        input[type=range] { width: 100%; cursor: pointer; }
-
-        #notification-banner { position: absolute; top: 15px; right: 15px; background: rgba(30, 41, 59, 0.9); border: 1px solid #3b82f6; color: white; padding: 10px 16px; border-radius: 6px; font-size: 13px; z-index: 99; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-        
-        .control-group { background: rgba(30, 41, 59, 0.3); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
-        .toggle-container { display: flex; align-items: center; justify-content: space-between; background: #0f172a; padding: 6px 10px; border-radius: 6px; border: 1px solid #334155; }
-    </style>
+   
 </head>
 <body>
 <div id="appContainer">
@@ -93,131 +61,160 @@
 
         <!-- 3D 渲染控制参数 -->
         <div class="border-t border-slate-800 pt-3 flex flex-col gap-3">
-            <div class="control-group flex flex-col gap-3">
-                <span class="text-xs text-blue-400 font-bold mb-1">📐 空间几何控制</span>
-                
-                <div class="slider-container">
-                    <label><span>三维展示平面范围 (选区范围)</span> <span id="meshSizeVal" class="text-emerald-400 font-bold">2400 米</span></label>
-                    <input type="range" id="meshSize" min="1000" max="5000" step="200" value="2400">
+            <!-- 空间几何控制 - 下拉菜单 -->
+            <div class="collapsible-menu">
+                <div class="menu-header active" onclick="toggleMenu(this)">
+                    <span>📐 空间几何控制</span>
+                    <span class="menu-toggle-icon">▼</span>
                 </div>
+                <div class="menu-content active">
+                    <div class="menu-items">
+                        <div class="slider-container">
+                            <label><span>三维展示平面范围 (选区范围)</span> <span id="meshSizeVal" class="text-emerald-400 font-bold">2400 米</span></label>
+                            <input type="range" id="meshSize" min="1000" max="5000" step="200" value="2400">
+                        </div>
 
-                <div class="slider-container">
-                    <label><span>垂直高度缩放系数</span> <span id="exaggerationVal" class="text-blue-400 font-bold">1.5</span></label>
-                    <input type="range" id="exaggeration" min="0.5" max="3.0" step="0.1" value="1.5">
-                </div>
+                        <div class="slider-container">
+                            <label><span>垂直高度缩放系数</span> <span id="exaggerationVal" class="text-blue-400 font-bold">1.5</span></label>
+                            <input type="range" id="exaggeration" min="0.5" max="3.0" step="0.1" value="1.5">
+                        </div>
 
-                <div class="slider-container">
-                    <label><span>地形解析精度 (网格分辨率)</span> <span id="gridSizeVal">128</span></label>
-                    <input type="range" id="gridSize" min="64" max="256" step="16" value="128">
-                </div>
-                
-                <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-50 p-2 rounded border border-slate-800">
-                    <span class="text-slate-300">显示网格三角剖面 (线框模式)</span>
-                    <input type="checkbox" id="showWireframe" class="w-4 h-4 cursor-pointer" onchange="toggleWireframe()">
+                        <div class="slider-container">
+                            <label><span>地形解析精度 (网格分辨率)</span> <span id="gridSizeVal">128</span></label>
+                            <input type="range" id="gridSize" min="64" max="256" step="16" value="128">
+                        </div>
+                        
+                        <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-50 p-2 rounded border border-slate-800">
+                            <span class="text-slate-300">显示网格三角剖面 (线框模式)</span>
+                            <input type="checkbox" id="showWireframe" class="w-4 h-4 cursor-pointer" onchange="toggleWireframe()">
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="control-group flex flex-col gap-3">
-                <span class="text-xs text-blue-400 font-bold mb-1">📏 物理等高线设置</span>
-                
-                <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-40 p-2 rounded border border-slate-800">
-                    <span class="text-slate-300">自动适配等高线间距</span>
-                    <input type="checkbox" id="autoContourSpacing" checked class="w-4 h-4 cursor-pointer" onchange="toggleAutoSpacing()">
+            <!-- 物理等高线设置 - 下拉菜单 -->
+            <div class="collapsible-menu">
+                <div class="menu-header active" onclick="toggleMenu(this)">
+                    <span>📏 物理等高线设置</span>
+                    <span class="menu-toggle-icon">▼</span>
                 </div>
+                <div class="menu-content active">
+                    <div class="menu-items">
+                        <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-40 p-2 rounded border border-slate-800">
+                            <span class="text-slate-300">自动适配等高线间距</span>
+                            <input type="checkbox" id="autoContourSpacing" checked class="w-4 h-4 cursor-pointer" onchange="toggleAutoSpacing()">
+                        </div>
 
-                <div class="slider-container" id="manualContourGroup">
-                    <label><span>GPU 等高线间隔</span> <span id="contourSpacingVal" class="text-blue-400 font-bold">100 米</span></label>
-                    <input type="range" id="contourSpacing" min="5" max="400" step="5" value="100">
-                </div>
+                        <div class="slider-container" id="manualContourGroup">
+                            <label><span>GPU 等高线间隔</span> <span id="contourSpacingVal" class="text-blue-400 font-bold">100 米</span></label>
+                            <input type="range" id="contourSpacing" min="5" max="400" step="5" value="100">
+                        </div>
 
-                <div class="slider-container">
-                    <label><span>等高线线条粗细 (像素)</span> <span id="contourLineWidthVal" class="text-blue-400 font-bold">1.3 像素</span></label>
-                    <input type="range" id="contourLineWidth" min="0.5" max="4.0" step="0.1" value="1.3" oninput="updateContourWidth(this.value)">
-                </div>
+                        <div class="slider-container">
+                            <label><span>等高线线条粗细 (像素)</span> <span id="contourLineWidthVal" class="text-blue-400 font-bold">1.3 像素</span></label>
+                            <input type="range" id="contourLineWidth" min="0.5" max="4.0" step="0.1" value="1.3" oninput="updateContourWidth(this.value)">
+                        </div>
 
-                <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-40 p-2 rounded">
-                    <span class="text-slate-300">在等高线上显示高程标注</span>
-                    <input type="checkbox" id="showLabels" checked class="w-4 h-4 cursor-pointer" onchange="toggleLabels()">
-                </div>
+                        <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-40 p-2 rounded">
+                            <span class="text-slate-300">在等高线上显示高程标注</span>
+                            <input type="checkbox" id="showLabels" checked class="w-4 h-4 cursor-pointer" onchange="toggleLabels()">
+                        </div>
 
-                <div class="slider-container" id="labelOffsetGroup">
-                    <label><span>高程标签高度偏移 (Z轴偏移)</span> <span id="labelOffsetVal" class="text-blue-400 font-bold">25 米</span></label>
-                    <input type="range" id="labelOffset" min="0" max="150" step="5" value="25" oninput="updateLabelOffset(this.value)">
-                </div>
+                        <div class="slider-container" id="labelOffsetGroup">
+                            <label><span>高程标签高度偏移 (Z轴偏移)</span> <span id="labelOffsetVal" class="text-blue-400 font-bold">25 米</span></label>
+                            <input type="range" id="labelOffset" min="0" max="150" step="5" value="25" oninput="updateLabelOffset(this.value)">
+                        </div>
 
-                <div class="flex items-center justify-between text-xs">
-                    <span class="text-slate-400">等高线覆盖颜色</span>
-                    <input type="color" id="contourColor" value="#ff0000" class="w-8 h-6 border-0 cursor-pointer bg-transparent">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-400">等高线覆盖颜色</span>
+                            <input type="color" id="contourColor" value="#ff0000" class="w-8 h-6 border-0 cursor-pointer bg-transparent">
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="control-group flex flex-col gap-3">
-                <span class="text-xs text-blue-400 font-bold mb-1">🌊 环境与生态仿真渲染</span>
-                
-                <div class="slider-container">
-                    <label><span>低洼积水/淹没模拟高度</span> <span id="waterHeightVal" class="text-cyan-400 font-bold">0 米</span></label>
-                    <input type="range" id="waterHeight" min="0" max="3000" step="5" value="0" oninput="updateWaterPlane(this.value)">
+            <!-- 环境与生态仿真渲染 - 下拉菜单 -->
+            <div class="collapsible-menu">
+                <div class="menu-header active" onclick="toggleMenu(this)">
+                    <span>🌊 环境与生态仿真渲染</span>
+                    <span class="menu-toggle-icon">▼</span>
                 </div>
+                <div class="menu-content active">
+                    <div class="menu-items">
+                        <div class="slider-container">
+                            <label><span>低洼积水/淹没模拟高度</span> <span id="waterHeightVal" class="text-cyan-400 font-bold">0 米</span></label>
+                            <input type="range" id="waterHeight" min="0" max="3000" step="5" value="0" oninput="updateWaterPlane(this.value)">
+                        </div>
 
-                <div class="slider-container">
-                    <label><span>日光水平方位角</span> <span id="lightAzimuthVal" class="text-yellow-400 font-bold">45°</span></label>
-                    <input type="range" id="lightAzimuth" min="0" max="360" step="5" value="45" oninput="updateSunDirection(this.value)">
+                        <div class="slider-container">
+                            <label><span>日光水平方位角</span> <span id="lightAzimuthVal" class="text-yellow-400 font-bold">45°</span></label>
+                            <input type="range" id="lightAzimuth" min="0" max="360" step="5" value="45" oninput="updateSunDirection(this.value)">
+                        </div>
+
+                        <div class="slider-container">
+                            <label><span>AI 生态灾害模拟降雨量</span> <span id="precipVal" class="text-cyan-400 font-bold">0 mm</span></label>
+                            <input type="range" id="precipitation" min="0" max="800" step="10" value="0">
+                        </div>
+
+                        <div class="flex items-center justify-between bg-slate-900 bg-opacity-50 p-2 rounded border border-slate-800 text-xs">
+                            <span class="text-slate-400">材质贴图来源</span>
+                            <select id="textureMode" class="bg-slate-800 text-white rounded p-1 outline-none">
+                                <option value="satellite">🛰️ 卫星真实遥感影像</option>
+                                <option value="procedural">🏔️ 智能高程分层渲染</option>
+                                <option value="riskMap">🌪️ AI 灾害热力风险图</option>
+                            </select>
+                        </div>
+
+                        <button id="aiEcoBtn" class="btn-ai mt-2">🌫️ 一键AI生态要素提取与灾害推演</button>
+                    </div>
                 </div>
-
-                <div class="slider-container">
-                    <label><span>AI 生态灾害模拟降雨量</span> <span id="precipVal" class="text-cyan-400 font-bold">0 mm</span></label>
-                    <input type="range" id="precipitation" min="0" max="800" step="10" value="0">
-                </div>
-
-                <div class="flex items-center justify-between bg-slate-900 bg-opacity-50 p-2 rounded border border-slate-800 text-xs">
-                    <span class="text-slate-400">材质贴图来源</span>
-                    <select id="textureMode" class="bg-slate-800 text-white rounded p-1 outline-none">
-                        <option value="satellite">🛰️ 卫星真实遥感影像</option>
-                        <option value="procedural">🏔️ 智能高程分层渲染</option>
-                        <option value="riskMap">🌪️ AI 灾害热力风险图</option>
-                    </select>
-                </div>
-
-                <button id="aiEcoBtn" class="btn-ai mt-2">🌫️ 一键AI生态要素提取与灾害推演</button>
             </div>
+
+             <!-- 降雨模拟与时序控制 - 下拉菜单 -->
+        <div class="collapsible-menu">
+            <div class="menu-header active" onclick="toggleMenu(this)">
+                <span>🌧️ 降雨模拟与时序控制</span>
+                <span class="menu-toggle-icon">▼</span>
+            </div>
+            <div class="menu-content active">
+                <div class="menu-items">
+                    <div class="slider-container">
+                        <label><span>模拟时间进度 (0-72h)</span> <span id="rainTimeDisplay" class="text-cyan-400 font-bold">00:00</span></label>
+                        <input type="range" id="rainTimeSlider" min="0" max="72" step="0.5" value="0" oninput="onRainTimeSliderChange(this.value)">
+                    </div>
+                    
+                    <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-40 p-2 rounded">
+                        <span class="text-slate-400">累计降雨: <span id="rainAccumDisplay" class="text-cyan-300 font-bold">0.0</span> mm</span>
+                        <span class="text-slate-400">当前雨强: <span id="rainRateDisplay" class="text-blue-300 font-bold">0</span> mm/h</span>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-1.5">
+                        <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="drizzle" onclick="applyRainPreset('drizzle')">💧 毛毛雨</span>
+                        <span class="rain-preset-btn preset-tag bg-blue-600 text-white border-blue-500" data-preset="moderate" onclick="applyRainPreset('moderate')">🌦️ 中雨</span>
+                        <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="heavy" onclick="applyRainPreset('heavy')">🌧️ 大雨</span>
+                        <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="storm" onclick="applyRainPreset('storm')">⛈️ 暴雨</span>
+                        <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="torrential" onclick="applyRainPreset('torrential')">🌊 大暴雨</span>
+                    </div>
+                    
+                    <div class="flex gap-1.5">
+                        <span class="speed-btn preset-tag bg-blue-600 text-white" data-speed="60" onclick="setRainTimeSpeed(60)">1x</span>
+                        <span class="speed-btn preset-tag bg-slate-700 text-slate-300" data-speed="300" onclick="setRainTimeSpeed(300)">5x</span>
+                        <span class="speed-btn preset-tag bg-slate-700 text-slate-300" data-speed="600" onclick="setRainTimeSpeed(600)">10x</span>
+                        <span class="speed-btn preset-tag bg-slate-700 text-slate-300" data-speed="1800" onclick="setRainTimeSpeed(1800)">30x</span>
+                        <span class="speed-btn preset-tag bg-slate-700 text-slate-300" data-speed="3600" onclick="setRainTimeSpeed(3600)">60x</span>
+                        <span class="text-[10px] text-slate-500 ml-auto self-center">倍速</span>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button id="rainPlayBtn" class="btn-ai" onclick="toggleRainPlay()" style="flex:1">▶ 播放</button>
+                        <button class="btn-primary" onclick="resetRainSimulation()" style="flex:0.5;background:linear-gradient(135deg,#64748b,#475569)">↺ 重置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         </div>
         
-        <!-- 降雨模拟控制 -->
-        <div class="control-group flex flex-col gap-3">
-            <span class="text-xs text-blue-400 font-bold mb-1">🌧️ 降雨模拟与时序控制</span>
-            
-            <div class="slider-container">
-                <label><span>模拟时间进度 (0-72h)</span> <span id="rainTimeDisplay" class="text-cyan-400 font-bold">00:00</span></label>
-                <input type="range" id="rainTimeSlider" min="0" max="72" step="0.5" value="0" oninput="onRainTimeSliderChange(this.value)">
-            </div>
-            
-            <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-40 p-2 rounded">
-                <span class="text-slate-400">累计降雨: <span id="rainAccumDisplay" class="text-cyan-300 font-bold">0.0</span> mm</span>
-                <span class="text-slate-400">当前雨强: <span id="rainRateDisplay" class="text-blue-300 font-bold">0</span> mm/h</span>
-            </div>
-            
-            <div class="flex flex-wrap gap-1.5">
-                <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="drizzle" onclick="applyRainPreset('drizzle')">💧 毛毛雨</span>
-                <span class="rain-preset-btn preset-tag bg-blue-600 text-white border-blue-500" data-preset="moderate" onclick="applyRainPreset('moderate')">🌦️ 中雨</span>
-                <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="heavy" onclick="applyRainPreset('heavy')">🌧️ 大雨</span>
-                <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="storm" onclick="applyRainPreset('storm')">⛈️ 暴雨</span>
-                <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="torrential" onclick="applyRainPreset('torrential')">🌊 大暴雨</span>
-            </div>
-            
-            <div class="flex gap-1.5">
-                <span class="speed-btn preset-tag bg-blue-600 text-white" data-speed="60" onclick="setRainTimeSpeed(60)">1x</span>
-                <span class="speed-btn preset-tag bg-slate-700 text-slate-300" data-speed="300" onclick="setRainTimeSpeed(300)">5x</span>
-                <span class="speed-btn preset-tag bg-slate-700 text-slate-300" data-speed="600" onclick="setRainTimeSpeed(600)">10x</span>
-                <span class="speed-btn preset-tag bg-slate-700 text-slate-300" data-speed="1800" onclick="setRainTimeSpeed(1800)">30x</span>
-                <span class="speed-btn preset-tag bg-slate-700 text-slate-300" data-speed="3600" onclick="setRainTimeSpeed(3600)">60x</span>
-                <span class="text-[10px] text-slate-500 ml-auto self-center">倍速</span>
-            </div>
-            
-            <div class="flex gap-2">
-                <button id="rainPlayBtn" class="btn-ai" onclick="toggleRainPlay()" style="flex:1">▶ 播放</button>
-                <button class="btn-primary" onclick="resetRainSimulation()" style="flex:0.5;background:linear-gradient(135deg,#64748b,#475569)">↺ 重置</button>
-            </div>
-        </div>
+       
 
         <div id="ecoResultPanel" class="control-group hidden">
             <div class="text-xs text-blue-400 font-bold mb-1">AI 生态灾害分析结果</div>
@@ -258,6 +255,15 @@
         </div>
     </div>
 </div>
+
+<!-- 折叠菜单交互脚本 -->
+<script>
+    function toggleMenu(headerEl) {
+        const content = headerEl.nextElementSibling;
+        headerEl.classList.toggle('active');
+        content.classList.toggle('active');
+    }
+</script>
 
 <script src="js/config.js"></script>
 <script src="js/shaders.js"></script>
