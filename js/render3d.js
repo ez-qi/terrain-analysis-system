@@ -1,4 +1,4 @@
-// Three.js 三维 WebGL 渲染管线与标注渲染模块
+﻿// Three.js 三维 WebGL 渲染管线与标准覆盖模式
 
 let scene3d;
 let camera3d;
@@ -95,6 +95,9 @@ function disposeTerrain() {
         scene3d.remove(terrainMesh);
         terrainMesh = null;
     }
+    // 清理降雨粒子系统
+    cleanupRainSystem();
+
     disposeGroup(terrainSidesGroup);
     if (labelGroup) {
         disposeGroup(labelGroup);
@@ -117,17 +120,17 @@ function generate3DTerrain() {
     const waterHeight = parseFloat(document.getElementById('waterHeight').value) * exaggeration;
     const contourSpacing = computeContourSpacing(size, exaggeration);
 
-    // 同步 UI：滑块显示为非夸张的实际米数，文本在自动模式下带标注
+    // 同步UI：滑块显示缩放后的实际米数，自动模式附带标注
     try {
         const displaySpacing = contourSpacing / exaggeration;
         const contourInput = document.getElementById('contourSpacing');
         const contourValEl = document.getElementById('contourSpacingVal');
         const isAuto = document.getElementById('autoContourSpacing')?.checked;
         if (contourInput) contourInput.value = displaySpacing;
-        if (contourValEl) contourValEl.innerText = `${displaySpacing.toFixed(0)} 米` + (isAuto ? ' (自适应)' : '');
+        if (contourValEl) contourValEl.innerText = `${displaySpacing.toFixed(0)} 米 ${isAuto ? ' (自动适配)' : ''}`;
     } catch (e) {
-        // 忽略 DOM 访问错误（在非浏览器环境或测试时）
-        console.warn('无法回写等高距 UI：', e);
+        // 忽略DOM访问错误（非浏览器环境或测试时）
+        console.warn('无法回写等高线UI', e);
     }
 
     showBanner('正在生成3D地形...', false);
@@ -192,6 +195,9 @@ function generate3DTerrain() {
         lastMaxHeight = maxH;
 
         if (terrainSidesGroup) {
+            // 清理降雨粒子系统
+            cleanupRainSystem();
+
             disposeGroup(terrainSidesGroup);
         }
         terrainSidesGroup = new THREE.Group();
@@ -212,7 +218,7 @@ function generate3DTerrain() {
             if (loadingEl) loadingEl.style.display = 'none';
         }, 300);
     }).catch((error) => {
-        showBanner(`❌ 地形生成失败：${error.message}`, true);
+        showBanner(`地形生成失败：${error.message}`, true);
         const loadingEl = document.getElementById('loading');
         if (loadingEl) loadingEl.style.display = 'none';
     });
@@ -254,8 +260,8 @@ function loadSatelliteTexture(material) {
     const loadingText = document.getElementById('loadingText');
     if (loadingEl) {
         loadingEl.style.display = 'flex';
-        loadingTitle.innerText = '🛰️ 拉取天地图卫星影像...';
-        loadingText.innerText = '请稍候，正在获取当前选区的真实遥感贴图。';
+        loadingTitle.innerText = '正在拉取天地图卫星影像...';
+        loadingText.innerText = '稍等，正在获取当前选区真实遥感贴图';
     }
 
     const zoom = 12;
@@ -289,7 +295,7 @@ function loadSatelliteTexture(material) {
                 material.uniforms.uTextureMode.value = 0.0;
                 material.needsUpdate = true;
             }
-            showBanner('天地图卫星贴图加载失败，已自动回退程序化渲染。', true);
+            showBanner('天地图卫星贴图加载失败，已自动回退程序生成纹理', true);
             if (loadingEl) loadingEl.style.display = 'none';
         }
     );
@@ -306,19 +312,19 @@ function toggleAutoSpacing() {
     const manualGroup = document.getElementById('manualContourGroup');
     const contourInput = document.getElementById('contourSpacing');
 
-    // 当自动模式开启时，保留滑块可见但禁用输入，视觉上降低不透明度
+    // 当自动模式开启时，保留滑块可见但禁用输入，视觉降低不透明度
     if (manualGroup) manualGroup.style.opacity = enabled ? '0.5' : '1.0';
     if (contourInput) contourInput.disabled = enabled;
 
-    // 同步回填滑块显示与文本（滑块显示为非夸张米）
+    // 同步滑块显示与文字（滑块显示未缩放米数）
     try {
         const size = parseFloat(document.getElementById('meshSize').value);
         const exaggeration = parseFloat(document.getElementById('exaggeration').value);
-        const spacingEx = computeContourSpacing(size, exaggeration); // 已包含夸张
+        const spacingEx = computeContourSpacing(size, exaggeration); // 已包含缩放
         const display = spacingEx / (exaggeration || 1);
         if (contourInput) contourInput.value = display;
         const contourValEl = document.getElementById('contourSpacingVal');
-        if (contourValEl) contourValEl.innerText = `${display.toFixed(0)} 米` + (enabled ? ' (自适应)' : '');
+        if (contourValEl) contourValEl.innerText = `${display.toFixed(0)} 米 ${enabled ? ' (自动适配)' : ''}`;
 
         if (terrainMesh && terrainMesh.material && terrainMesh.material.uniforms) {
             terrainMesh.material.uniforms.uContourSpacing.value = spacingEx;
@@ -470,28 +476,28 @@ function renderContourLabels(minH, maxH, spacing, exaggeration) {
     }
 }
 
-// 实时更新等高距：value 为滑块上的米（未乘夸张），finalize=true 表示拖动结束需重建文字标注
+// 实时更新等高间距：value为滑块上的米数（未乘缩放），finalize=true代表拖拽结束需要重建文字标注
 function updateContourSpacing(value, finalize = false) {
     try {
         const isAuto = document.getElementById('autoContourSpacing')?.checked;
-        if (isAuto) return; // 自动模式由 generate3DTerrain 控制
+        if (isAuto) return; // 自动模式由generate3DTerrain控制
 
         const val = parseFloat(value);
         if (isNaN(val)) return;
 
         const exaggeration = parseFloat(document.getElementById('exaggeration').value) || 1.0;
-        const spacingEx = val * exaggeration; // 着色器使用的夸张高度单位
+        const spacingEx = val * exaggeration; // 着色器使用的缩放高度单位
 
-        // 更新着色器 uniform（即时生效）
+        // 更新着色器uniform（即时生效）
         if (terrainMesh && terrainMesh.material && terrainMesh.material.uniforms && terrainMesh.material.uniforms.uContourSpacing) {
             terrainMesh.material.uniforms.uContourSpacing.value = spacingEx;
         }
 
-        // 更新 UI 显示文本
+        // 更新UI显示文字
         const contourValEl = document.getElementById('contourSpacingVal');
         if (contourValEl) contourValEl.innerText = val.toFixed(0) + ' 米';
 
-        // 如果用户完成拖动（或需要立即重建标签），则重新渲染文字标签而不重建地形
+        // 如果用户完成拖拽（或需要立刻重建标注），则重新渲染文字标签而不重建地形
         if (finalize) {
             renderContourLabels(lastMinHeight, lastMaxHeight, spacingEx, exaggeration);
         }

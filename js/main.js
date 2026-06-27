@@ -1,4 +1,4 @@
-// 系统核心 Orchestrator 驱动控制器
+﻿// 系统核心 Orchestrator 驱动控制器
 
 let map2d;
 let marker2d;
@@ -7,18 +7,18 @@ let raycaster;
 let mouse;
 let activeLat = 36.2500;
 let activeLon = 117.1000;
-let activeName = '泰山';
+let activeName = '泰北';
 
 function selectPreset(lon, lat, name) {
     activeLon = lon;
     activeLat = lat;
     activeName = name;
-    
+
     document.getElementById('mapLon').innerText = lon.toFixed(4);
     document.getElementById('mapLat').innerText = lat.toFixed(4);
     marker2d.setLatLng([lat, lon]);
     drawSelectionBox(lat, lon);
-    
+
     generate3DTerrain();
 }
 
@@ -65,18 +65,18 @@ function updateContourWidth(width) {
 }
 
 // ==========================================
-// 【核心修复 1】：将卫星图加载封装为 Promise，且加入动态清晰度(Zoom)补偿
+// 核心优化1：将卫星图片加载封装进Promise，同时增加动态清晰度(缩放等级)补偿
 // ==========================================
 function loadSatelliteTexture(material) {
     return new Promise((resolve) => {
         const loadingEl = document.getElementById('loading');
         loadingEl.style.display = 'flex';
-        document.getElementById('loadingTitle').innerText = "🛰️ 拉取卫星影像";
-        document.getElementById('loadingText').innerText = "正在向天地图拉取高清无偏移遥感贴图...";
+        document.getElementById('loadingTitle').innerText = "正在拉取卫星影像";
+        document.getElementById('loadingText').innerText = "正在向天地图获取高清无偏移遥感贴图...";
 
         const tdtTk = getTdtTk();
-        
-        // 【智能清晰度补偿】：根据网格物理大小，动态调节天地图缩放层级。面积越小，索要的清晰度越高。
+
+        // 智能清晰度补偿：根据网格物理尺寸，动态调整天地图缩放层级。区域范围越小，需要的清晰度越高
         const meshPhysicalSize = parseFloat(document.getElementById('meshSize').value);
         let optimalZoom = 13; // 默认 2400m
         if (meshPhysicalSize <= 1200) optimalZoom = 15;
@@ -90,41 +90,41 @@ function loadSatelliteTexture(material) {
         loader.setCrossOrigin('anonymous');
         loader.load(
             staticUrl,
-            function(texture) {
+            function (texture) {
                 material.uniforms.uSatelliteTex.value = texture;
                 material.uniforms.uTextureMode.value = 1.0;
                 material.needsUpdate = true;
-                resolve(true); // 加载成功，允许放行
+                resolve(true); // 加载成功，允许关闭加载遮罩
             },
             undefined,
-            function(err) {
+            function (err) {
                 console.warn(err);
-                showBanner("天地图获取失败，本地已自动降级为「智能高程分色渲染」", true);
+                showBanner("天地图资源获取失败，本地已自动降级为智能高程分层纹理", true);
                 document.getElementById('textureMode').value = 'procedural';
                 material.uniforms.uTextureMode.value = 0.0;
-                resolve(false); // 加载失败，允许放行
+                resolve(false); // 加载失败，允许关闭加载遮罩
             }
         );
     });
 }
 
 // ==========================================
-// 【核心修复 2】：使用 async/await 彻底解决模型白模闪烁问题
+// 核心优化2：使用 async/await 彻底解决模型白屏卡顿问题
 // ==========================================
 async function generate3DTerrain() {
     const loadingEl = document.getElementById('loading');
     loadingEl.style.display = 'flex';
-    document.getElementById('loadingTitle').innerText = "🌐 空间检索中...";
-    document.getElementById('loadingText').innerText = `正在向高程库拉取坐标 [${activeLon.toFixed(3)}, ${activeLat.toFixed(4)}] 的真实 DEM 矩阵...`;
+    document.getElementById('loadingTitle').innerText = "空间地形解析中...";
+    document.getElementById('loadingText').innerText = `正在向高程库获取坐标 [${activeLon.toFixed(3)}, ${activeLat.toFixed(4)}] 的真实DEM网格...`;
 
-    // 1. 获取高程
+    // 1. 获取高程数据
     fetchedElevationGrid = await fetchRealElevation(activeLat, activeLon);
 
     const gridSize = parseInt(document.getElementById('gridSize').value);
     const exaggeration = parseFloat(document.getElementById('exaggeration').value);
     const contourColor = document.getElementById('contourColor').value;
     const textureMode = document.getElementById('textureMode').value;
-    const size = parseFloat(document.getElementById('meshSize').value); 
+    const size = parseFloat(document.getElementById('meshSize').value);
     const contourLineWidth = parseFloat(document.getElementById('contourLineWidth').value);
 
     // 清理旧资源
@@ -146,9 +146,9 @@ async function generate3DTerrain() {
     terrainSidesGroup = new THREE.Group();
     scene3d.add(terrainSidesGroup);
 
-    // 构建新网格
+    // 构建新网格几何体
     const geometry = new THREE.PlaneGeometry(size, size, gridSize, gridSize);
-    geometry.rotateX(-Math.PI / 2); 
+    geometry.rotateX(-Math.PI / 2);
 
     const positions = geometry.attributes.position.array;
     const count = positions.length / 3;
@@ -183,19 +183,20 @@ async function generate3DTerrain() {
 
     let spacing = parseFloat(document.getElementById('contourSpacing').value);
     const isAuto = document.getElementById('autoContourSpacing').checked;
+
     if (isAuto) {
         const heightDiff = maxHeight - minHeight;
         let autoSpacing = Math.max(5.0, heightDiff / 25.0);
         if (autoSpacing > 15.0) autoSpacing = Math.ceil(autoSpacing / 10.0) * 10.0;
         else autoSpacing = Math.ceil(autoSpacing / 5.0) * 5.0;
-        
+
         spacing = autoSpacing;
         document.getElementById('contourSpacing').value = spacing;
-        document.getElementById('contourSpacingVal').innerText = `${spacing.toFixed(0)} 米 (自适应)`;
+        document.getElementById('contourSpacingVal').innerText = `${spacing.toFixed(0)} 米(自动适配)`;
     }
 
     const azimuthVal = parseFloat(document.getElementById('lightAzimuth').value);
-    const phi = (90 - 45) * Math.PI / 180; 
+    const phi = (90 - 45) * Math.PI / 180;
     const theta = azimuthVal * Math.PI / 180;
     const sunVector = new THREE.Vector3(
         Math.sin(phi) * Math.sin(theta),
@@ -239,9 +240,9 @@ async function generate3DTerrain() {
     waterHeightSlider.max = Math.ceil(maxHeight);
     updateWaterPlane(parseFloat(waterHeightSlider.value));
 
-    // UI Panel 数据展示
+    // UI面板数据展示
     document.getElementById('measureName').innerText = activeName;
-    document.getElementById('measureStyle').innerText = fetchedElevationGrid ? "SRTM 真实世界高程" : "智能地理分形 (降级重构)";
+    document.getElementById('measureStyle').innerText = fetchedElevationGrid ? "SRTM 真实全球高程" : "智能地形生成 (本地重建)";
     document.getElementById('measureCoord').innerText = `${activeLon.toFixed(4)}, ${activeLat.toFixed(4)}`;
     document.getElementById('measureHeight').innerText = `${minHeight.toFixed(0)} - ${maxHeight.toFixed(0)} 米`;
 
@@ -250,44 +251,54 @@ async function generate3DTerrain() {
     controls3d.update();
 
     // ==========================================
-    // 强制等待：如果需要卫星贴图，必须等它下载完成再关闭 Loading 遮罩！
+    // 强制等待：如果需要卫星贴图，必须等待下载完成再关闭Loading遮罩
     // ==========================================
     if (textureMode === 'satellite') {
         await loadSatelliteTexture(terrainMaterial);
     }
 
-    loadingEl.style.display = 'none'; // 此时图片已经 100% 准备好，关闭遮罩
+    // 重建降雨粒子系统
+    setupRainParticles();
+
+    // 恢复暂停时的水位状态
+    if (rainPlaying) {
+        rainSystemInstance?.setOpacity(1.0);
+    }
+
+    loadingEl.style.display = 'none'; // 此时资源全部就绪，关闭加载遮罩
     isFirstRender = false;
 
     if (fetchedElevationGrid) {
-        showBanner(`🎉 地形生成成功！范围：${(size/1000).toFixed(1)}公里，最大高差：${(maxHeight - minHeight).toFixed(0)}米`);
+        showBanner(`地形生成成功！范围：${(size / 1000).toFixed(1)}千米，最大高差：${(maxHeight - minHeight).toFixed(0)}米`);
     } else {
-        showBanner(`⚠️ 高程库连接超时，已自适应降级本地地理空间噪波渲染。`);
+        showBanner(`高程接口超时，已自动适配本地程序化地形噪声渲染`);
     }
 }
 
 window.onload = async () => {
-    await loadLocalConfig(); 
+    await loadLocalConfig();
     initLeafletMap();
     initThree();
-    
+    initRainSystem();
+
     raycaster = new THREE.Raycaster();
     mouse = new THREE.Vector2();
     const threeDiv = document.getElementById('threeCanvas');
     threeDiv.addEventListener('click', onCanvasClick);
 
     document.getElementById('generateBtn').addEventListener('click', generate3DTerrain);
-    
+
     document.getElementById('aiGenerateBtn').addEventListener('click', () => {
         const prompt = document.getElementById('aiPrompt').value;
         if (prompt.trim() === '') { alert("请输入地名！"); return; }
         callLLMToAnalyzeRegion(prompt);
     });
 
+    // 降雨预设按钮事件 (通过 onclick 已处理，但需要确保播放时预设更新也对水位产生影响)
     document.getElementById('exaggeration').addEventListener('input', (e) => {
         document.getElementById('exaggerationVal').innerText = e.target.value;
     });
-    
+
     document.getElementById('gridSize').addEventListener('input', (e) => {
         document.getElementById('gridSizeVal').innerText = e.target.value;
     });
@@ -296,7 +307,7 @@ window.onload = async () => {
         document.getElementById('meshSizeVal').innerText = e.target.value + " 米";
         drawSelectionBox(activeLat, activeLon);
     });
-    
+
     document.getElementById('contourSpacing').addEventListener('input', (e) => {
         document.getElementById('contourSpacingVal').innerText = e.target.value + " 米";
         if (terrainMesh && !document.getElementById('autoContourSpacing').checked) {
@@ -304,7 +315,7 @@ window.onload = async () => {
             terrainMesh.material.uniforms.uContourSpacing.value = parseFloat(e.target.value) * exaggeration;
         }
     });
-    
+
     document.getElementById('contourColor').addEventListener('change', (e) => {
         if (terrainMesh) {
             terrainMesh.material.uniforms.uContourColor.value.set(e.target.value);
@@ -334,7 +345,7 @@ window.onload = async () => {
             if (!currentApiKey) { alert("缺少API密钥"); return; }
 
             try {
-                aiEcoBtn.innerText = "⏳ AI 地学深度分析中...";
+                aiEcoBtn.innerText = "AI地形深度分析中...";
                 const ecoData = await fetchEcoDisasterAnalysis(activeName, currentApiKey);
 
                 const ecoClimateEl = document.getElementById('ecoClimate');
@@ -347,7 +358,7 @@ window.onload = async () => {
                 if (ecoVegBaseEl) ecoVegBaseEl.innerText = ecoData.baseVegCoverage != null ? ecoData.baseVegCoverage : "N/A";
                 if (ecoResultPanel) ecoResultPanel.classList.remove('hidden');
 
-                if (terrainMesh && terrainMesh.material.uniforms && terrainMesh.material.uniforms.uBaseVeg) {
+                if (terrainMesh && terrainMesh.material.uniforms && terrainMesh.material.uBaseVeg) {
                     terrainMesh.material.uniforms.uBaseVeg.value = parseFloat(ecoData.baseVegCoverage) || 0.7;
                 }
 
@@ -355,9 +366,9 @@ window.onload = async () => {
                 generate3DTerrain();
             } catch (e) {
                 console.error(e);
-                alert("AI 推演失败，请重试");
+                alert("AI推演失败，请重试");
             } finally {
-                aiEcoBtn.innerText = "🌍 一键 AI 生态要素提取与灾害推演";
+                aiEcoBtn.innerText = "一键AI生态要素提取与灾害推演";
             }
         });
     }
