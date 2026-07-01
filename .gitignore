@@ -1,0 +1,21 @@
+# 本地密钥环境文件
+.env.local
+.env.development.local
+.env.production.local
+js/config.local.js
+client/js/config.local.js
+# 允许提交模板
+!.env.example
+!.config.example.js
+
+# Node
+node_modules/
+.env
+server/cache/
+server/data/dem/*.tif
+
+# Build output
+client/dist/
+
+# Superpowers
+.superpowers/
