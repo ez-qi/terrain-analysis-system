@@ -351,12 +351,9 @@ window.onload = async () => {
     const aiEcoBtn = document.getElementById('aiEcoBtn');
     if (aiEcoBtn) {
         aiEcoBtn.addEventListener('click', async () => {
-            const currentApiKey = window.getApiKey();
-            if (!currentApiKey) { alert("缺少API密钥"); return; }
-
             try {
                 aiEcoBtn.innerText = "AI地形深度分析中...";
-                const ecoData = await window.fetchEcoDisasterAnalysis(window.activeName, currentApiKey);
+                const ecoData = await window.fetchEcoDisasterAnalysis(window.activeName);
 
                 const ecoClimateEl = document.getElementById('ecoClimate');
                 const ecoSoilEl = document.getElementById('ecoSoil');
