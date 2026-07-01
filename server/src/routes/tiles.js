@@ -1,24 +1,41 @@
 import { Router } from 'express';
 import { config } from '../config/index.js';
+import { tileCache } from '../services/tileCache.js';
 
 const router = Router();
 
 /**
  * GET /api/tiles/:z/:x/:y
- * 代理天地图卫星瓦片（隐藏 Token）
+ * 代理天地图卫星瓦片（隐藏 Token），带磁盘缓存
  */
 router.get('/:z/:x/:y', async (req, res, next) => {
   try {
-    const { z, x, y } = req.params;
+    const z = parseInt(req.params.z, 10);
+    const x = parseInt(req.params.x, 10);
+    const y = parseInt(req.params.y, 10);
+
+    // 检查缓存
+    const cached = await tileCache.get(z, x, y);
+    if (cached) {
+      res.set('Content-Type', 'image/png');
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.send(cached);
+    }
+
     const url = `https://t0.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX=${z}&TILEROW=${y}&TILECOL=${x}&tk=${config.tdtTk}`;
 
     const response = await fetch(url);
     if (!response.ok) throw new Error(`天地图瓦片错误: ${response.status}`);
 
     const buffer = await response.arrayBuffer();
+    const buf = Buffer.from(buffer);
+
+    // 写入缓存
+    await tileCache.set(z, x, y, buf);
+
     res.set('Content-Type', 'image/png');
     res.set('Cache-Control', 'public, max-age=86400');
-    res.send(Buffer.from(buffer));
+    res.send(buf);
   } catch (err) {
     next(err);
   }
