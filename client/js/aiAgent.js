@@ -20,12 +20,12 @@ async function callLLMToAnalyzeRegion(userQuery) {
 
         const parsed = await response.json();
 
-        activeLon = parsed.lon;
-        activeLat = parsed.lat;
-        activeName = parsed.name;
+        window.activeLon = parsed.lon;
+        window.activeLat = parsed.lat;
+        window.activeName = parsed.name;
 
-        marker2d.setLatLng([activeLat, activeLon]);
-        drawSelectionBox(activeLat, activeLon);
+        window.marker2d.setLatLng([window.activeLat, window.activeLon]);
+        drawSelectionBox(window.activeLat, window.activeLon);
 
         generate3DTerrain();
 
@@ -50,3 +50,7 @@ async function fetchEcoDisasterAnalysis(locationName) {
         throw new Error('生态分析失败: ' + err.message);
     }
 }
+
+// ESM 导出
+window.callLLMToAnalyzeRegion = callLLMToAnalyzeRegion;
+window.fetchEcoDisasterAnalysis = fetchEcoDisasterAnalysis;

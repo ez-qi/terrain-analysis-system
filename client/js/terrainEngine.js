@@ -104,3 +104,11 @@ function fbm(x, y) {
     }
     return value;
 }
+
+// ESM 导出 — 供 main.js 的 generate3DTerrain 调用
+window.fetchRealElevation = fetchRealElevation;
+window.fetchOpenMeteoFallback = fetchOpenMeteoFallback;
+window.interpolateHeight = interpolateHeight;
+window.fbm = fbm;
+window.noise = noise;
+window.hash = hash;

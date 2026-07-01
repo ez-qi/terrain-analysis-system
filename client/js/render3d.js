@@ -1,38 +1,40 @@
 ﻿// Three.js 三维 WebGL 渲染管线与标准覆盖模式
 
-let scene3d;
-let camera3d;
-let renderer3d;
-let controls3d;
-let terrainMesh;
-let terrainSidesGroup;
-let labelGroup;
-let bannerTimer;
-let satelliteTexture;
-let lastMinHeight = 0;
-let lastMaxHeight = 0;
+// 共享变量挂在 window 上，方便其他 ESM 模块访问
+window.window.scene3d = undefined;
+window.window.camera3d = undefined;
+window.renderer3d = undefined;
+window.window.controls3d = undefined;
+window.window.terrainMesh = undefined;
+window.window.terrainSidesGroup = undefined;
+window.window.labelGroup = undefined;
+window.window.bannerTimer = undefined;
+window.satelliteTexture = undefined;
+window.window.lastMinHeight = 0;
+window.window.lastMaxHeight = 0;
+window.isFirstRender = false;
 
 function initThree() {
     const container = document.getElementById('threeCanvas');
 
-    scene3d = new THREE.Scene();
-    scene3d.background = new THREE.Color(0x0b0f19);
+    window.scene3d = new THREE.Scene();
+    window.scene3d.background = new THREE.Color(0x0b0f19);
 
-    camera3d = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
-    camera3d.position.set(0, 900, 1200);
+    window.camera3d = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
+    window.camera3d.position.set(0, 900, 1200);
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
-    scene3d.add(ambientLight);
+    window.scene3d.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.85);
     directionalLight.position.set(1000, 1200, 700);
-    scene3d.add(directionalLight);
+    window.scene3d.add(directionalLight);
 
     const grid = new THREE.GridHelper(5000, 50, 0x334155, 0x1e293b);
     grid.position.y = -1;
-    scene3d.add(grid);
+    window.scene3d.add(grid);
 
-    terrainSidesGroup = new THREE.Group();
-    scene3d.add(terrainSidesGroup);
+    window.terrainSidesGroup = new THREE.Group();
+    window.scene3d.add(window.terrainSidesGroup);
 
     renderer3d = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer3d.setPixelRatio(window.devicePixelRatio);
@@ -40,10 +42,10 @@ function initThree() {
     renderer3d.domElement.style.display = 'block';
     container.appendChild(renderer3d.domElement);
 
-    controls3d = new THREE.OrbitControls(camera3d, renderer3d.domElement);
-    controls3d.enableDamping = true;
-    controls3d.target.set(0, 0, 0);
-    controls3d.update();
+    window.controls3d = new THREE.OrbitControls(window.camera3d, renderer3d.domElement);
+    window.controls3d.enableDamping = true;
+    window.controls3d.target.set(0, 0, 0);
+    window.controls3d.update();
 
     window.addEventListener('resize', onWindowResize);
 
@@ -56,19 +58,19 @@ function initThree() {
 
 function onWindowResize() {
     const container = document.getElementById('threeCanvas');
-    if (!renderer3d || !camera3d) return;
-    camera3d.aspect = container.clientWidth / container.clientHeight;
-    camera3d.updateProjectionMatrix();
+    if (!renderer3d || !window.camera3d) return;
+    window.camera3d.aspect = container.clientWidth / container.clientHeight;
+    window.camera3d.updateProjectionMatrix();
     renderer3d.setSize(container.clientWidth, container.clientHeight);
 }
 
 function animate() {
     requestAnimationFrame(animate);
-    if (terrainMesh && terrainMesh.material && terrainMesh.material.uniforms && terrainMesh.material.uniforms.uTime) {
-        terrainMesh.material.uniforms.uTime.value += 0.01;
+    if (window.terrainMesh && window.terrainMesh.material && window.terrainMesh.material.uniforms && window.terrainMesh.material.uniforms.uTime) {
+        window.terrainMesh.material.uniforms.uTime.value += 0.01;
     }
-    if (controls3d) controls3d.update();
-    if (renderer3d) renderer3d.render(scene3d, camera3d);
+    if (window.controls3d) window.controls3d.update();
+    if (renderer3d) renderer3d.render(window.scene3d, window.camera3d);
 }
 
 function disposeGroup(group) {
@@ -89,18 +91,18 @@ function disposeGroup(group) {
 }
 
 function disposeTerrain() {
-    if (terrainMesh) {
-        if (terrainMesh.geometry) terrainMesh.geometry.dispose();
-        if (terrainMesh.material) terrainMesh.material.dispose();
-        scene3d.remove(terrainMesh);
-        terrainMesh = null;
+    if (window.terrainMesh) {
+        if (window.terrainMesh.geometry) window.terrainMesh.geometry.dispose();
+        if (window.terrainMesh.material) window.terrainMesh.material.dispose();
+        window.scene3d.remove(window.terrainMesh);
+        window.terrainMesh = null;
     }
     // 清理降雨粒子系统
     cleanupRainSystem();
 
-    disposeGroup(terrainSidesGroup);
-    if (labelGroup) {
-        disposeGroup(labelGroup);
+    disposeGroup(window.terrainSidesGroup);
+    if (window.labelGroup) {
+        disposeGroup(window.labelGroup);
     }
 }
 
@@ -182,33 +184,33 @@ function generate3DTerrain() {
             side: THREE.DoubleSide
         });
 
-        terrainMesh = new THREE.Mesh(geometry, terrainMaterial);
-        terrainMesh.receiveShadow = true;
-        terrainMesh.castShadow = false;
-        scene3d.add(terrainMesh);
+        window.terrainMesh = new THREE.Mesh(geometry, terrainMaterial);
+        window.terrainMesh.receiveShadow = true;
+        window.terrainMesh.castShadow = false;
+        window.scene3d.add(window.terrainMesh);
 
         if (textureMode === 'satellite') {
             loadSatelliteTexture(terrainMaterial);
         }
 
-        lastMinHeight = minH;
-        lastMaxHeight = maxH;
+        window.lastMinHeight = minH;
+        window.lastMaxHeight = maxH;
 
-        if (terrainSidesGroup) {
+        if (window.terrainSidesGroup) {
             // 清理降雨粒子系统
             cleanupRainSystem();
 
-            disposeGroup(terrainSidesGroup);
+            disposeGroup(window.terrainSidesGroup);
         }
-        terrainSidesGroup = new THREE.Group();
-        scene3d.add(terrainSidesGroup);
+        window.terrainSidesGroup = new THREE.Group();
+        window.scene3d.add(window.terrainSidesGroup);
         buildTerrainSidesAndBottom(positions, gridSize, size, minH, maxH);
 
         renderContourLabels(minH, maxH, contourSpacing, exaggeration);
 
         const center = new THREE.Vector3(0, (minH + maxH) / 2, 0);
-        controls3d.target.copy(center);
-        controls3d.update();
+        window.controls3d.target.copy(center);
+        window.controls3d.update();
 
         document.getElementById('measureName').innerText = activeName;
         document.getElementById('measureCoord').innerText = `${activeLon.toFixed(4)}, ${activeLat.toFixed(4)}`;
@@ -225,14 +227,14 @@ function generate3DTerrain() {
 }
 
 function onCanvasClick(event) {
-    if (!terrainMesh || !renderer3d) return;
+    if (!window.terrainMesh || !renderer3d) return;
 
     const rect = renderer3d.domElement.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-    raycaster.setFromCamera(mouse, camera3d);
-    const intersects = raycaster.intersectObject(terrainMesh, true);
+    raycaster.setFromCamera(mouse, window.camera3d);
+    const intersects = raycaster.intersectObject(window.terrainMesh, true);
     if (intersects.length > 0) {
         const point = intersects[0].point;
         document.getElementById('measureHeight').innerText = `${point.y.toFixed(1)} 米`;
@@ -245,8 +247,8 @@ function showBanner(message, persistent = false) {
     banner.innerText = message;
     banner.style.display = 'block';
     if (!persistent) {
-        clearTimeout(bannerTimer);
-        bannerTimer = setTimeout(() => {
+        clearTimeout(window.bannerTimer);
+        window.bannerTimer = setTimeout(() => {
             banner.style.display = 'none';
         }, 4000);
     }
@@ -302,8 +304,8 @@ function loadSatelliteTexture(material) {
 }
 
 function toggleWireframe() {
-    if (terrainMesh && terrainMesh.material) {
-        terrainMesh.material.wireframe = document.getElementById('showWireframe').checked;
+    if (window.terrainMesh && window.terrainMesh.material) {
+        window.terrainMesh.material.wireframe = document.getElementById('showWireframe').checked;
     }
 }
 
@@ -326,8 +328,8 @@ function toggleAutoSpacing() {
         const contourValEl = document.getElementById('contourSpacingVal');
         if (contourValEl) contourValEl.innerText = `${display.toFixed(0)} 米 ${enabled ? ' (自动适配)' : ''}`;
 
-        if (terrainMesh && terrainMesh.material && terrainMesh.material.uniforms) {
-            terrainMesh.material.uniforms.uContourSpacing.value = spacingEx;
+        if (window.terrainMesh && window.terrainMesh.material && window.terrainMesh.material.uniforms) {
+            window.terrainMesh.material.uniforms.uContourSpacing.value = spacingEx;
         }
     } catch (e) {
         console.warn('toggleAutoSpacing 同步失败', e);
@@ -335,9 +337,9 @@ function toggleAutoSpacing() {
 }
 
 function toggleLabels() {
-    if (terrainMesh) {
+    if (window.terrainMesh) {
         const spacing = computeContourSpacing(parseFloat(document.getElementById('meshSize').value), parseFloat(document.getElementById('exaggeration').value));
-        renderContourLabels(lastMinHeight, lastMaxHeight, spacing, parseFloat(document.getElementById('exaggeration').value));
+        renderContourLabels(window.lastMinHeight, window.lastMaxHeight, spacing, parseFloat(document.getElementById('exaggeration').value));
     }
 }
 
@@ -391,7 +393,7 @@ function buildTerrainSidesAndBottom(positions, gridSize, size, minH, maxH) {
 
         const sideMat = new THREE.MeshBasicMaterial({ color: 0x3e2f25, side: THREE.DoubleSide });
         const wallMesh = new THREE.Mesh(wallGeo, sideMat);
-        terrainSidesGroup.add(wallMesh);
+        window.terrainSidesGroup.add(wallMesh);
     }
 
     createWallSegment(northPoints, false);
@@ -407,17 +409,17 @@ function buildTerrainSidesAndBottom(positions, gridSize, size, minH, maxH) {
     });
     const bottomMesh = new THREE.Mesh(bottomGeo, bottomMat);
     bottomMesh.position.y = baseHeight;
-    terrainSidesGroup.add(bottomMesh);
+    window.terrainSidesGroup.add(bottomMesh);
 }
 
 function renderContourLabels(minH, maxH, spacing, exaggeration) {
-    if (!labelGroup) {
-        labelGroup = new THREE.Group();
-        scene3d.add(labelGroup);
+    if (!window.labelGroup) {
+        window.labelGroup = new THREE.Group();
+        window.scene3d.add(window.labelGroup);
     }
 
-    if (labelGroup.children.length > 0) {
-        disposeGroup(labelGroup);
+    if (window.labelGroup.children.length > 0) {
+        disposeGroup(window.labelGroup);
     }
 
     if (!document.getElementById('showLabels').checked) return;
@@ -431,8 +433,8 @@ function renderContourLabels(minH, maxH, spacing, exaggeration) {
         if (addedCount > 12) break;
         const targetHeight = h * exaggeration;
 
-        if (terrainMesh) {
-            const pos = terrainMesh.geometry.attributes.position.array;
+        if (window.terrainMesh) {
+            const pos = window.terrainMesh.geometry.attributes.position.array;
             let bestIdx = -1;
             let minDiff = Infinity;
             for (let idx = 0; idx < pos.length / 3; idx++) {
@@ -469,7 +471,7 @@ function renderContourLabels(minH, maxH, spacing, exaggeration) {
 
                 sprite.userData = { baseY: pos[bestIdx * 3 + 1] };
                 sprite.position.set(pos[bestIdx * 3], pos[bestIdx * 3 + 1] + offsetVal * exaggeration, pos[bestIdx * 3 + 2]);
-                labelGroup.add(sprite);
+                window.labelGroup.add(sprite);
                 addedCount++;
             }
         }
@@ -489,8 +491,8 @@ function updateContourSpacing(value, finalize = false) {
         const spacingEx = val * exaggeration; // 着色器使用的缩放高度单位
 
         // 更新着色器uniform（即时生效）
-        if (terrainMesh && terrainMesh.material && terrainMesh.material.uniforms && terrainMesh.material.uniforms.uContourSpacing) {
-            terrainMesh.material.uniforms.uContourSpacing.value = spacingEx;
+        if (window.terrainMesh && window.terrainMesh.material && window.terrainMesh.material.uniforms && window.terrainMesh.material.uniforms.uContourSpacing) {
+            window.terrainMesh.material.uniforms.uContourSpacing.value = spacingEx;
         }
 
         // 更新UI显示文字
@@ -499,7 +501,7 @@ function updateContourSpacing(value, finalize = false) {
 
         // 如果用户完成拖拽（或需要立刻重建标注），则重新渲染文字标签而不重建地形
         if (finalize) {
-            renderContourLabels(lastMinHeight, lastMaxHeight, spacingEx, exaggeration);
+            renderContourLabels(window.lastMinHeight, window.lastMaxHeight, spacingEx, exaggeration);
         }
     } catch (e) {
         console.warn('updateContourSpacing 失败', e);

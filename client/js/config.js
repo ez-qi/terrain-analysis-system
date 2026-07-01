@@ -4,6 +4,7 @@
 function loadLocalConfig() {
     return Promise.resolve();
 }
+window.loadLocalConfig = loadLocalConfig;
 
 function getTdtTk() {
     return '';  // 密钥在后端，通过 /api/tiles 代理

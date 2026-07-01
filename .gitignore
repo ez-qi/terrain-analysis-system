@@ -13,5 +13,8 @@ node_modules/
 server/cache/
 server/data/dem/*.tif
 
+# Build output
+client/dist/
+
 # Superpowers
 .superpowers/

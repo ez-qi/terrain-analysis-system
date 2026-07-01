@@ -382,7 +382,7 @@
      const waterSlider = document.getElementById('waterHeight');
      if (waterSlider) {
          waterSlider.value = 0;
-         updateWaterPlane(0);
+         window.updateWaterPlane(0);
      }
  
      if (rainPlaying) {
@@ -390,7 +390,7 @@
      }
  
      updateRainUI();
-     showBanner('降雨模拟已重置', false);
+     window.showBanner('降雨模拟已重置', false);
  }
  
  /**
@@ -436,7 +436,7 @@
          if (waterSlider) {
              const newWater = Math.min(parseFloat(waterSlider.max), rainAccumulation);
              waterSlider.value = newWater;
-             updateWaterPlane(newWater);
+             window.updateWaterPlane(newWater);
          }
          updateRainUI();
      }
@@ -450,3 +450,12 @@
          rainSystemInstance.destroy();
      }
  }
+
+// ESM 导出
+window.initRainSystem = initRainSystem;
+window.setupRainParticles = setupRainParticles;
+window.applyRainPreset = applyRainPreset;
+window.setRainTimeSpeed = setRainTimeSpeed;
+window.toggleRainPlay = toggleRainPlay;
+window.resetRainSimulation = resetRainSimulation;
+window.onRainTimeSliderChange = onRainTimeSliderChange;
