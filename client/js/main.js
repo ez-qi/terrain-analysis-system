@@ -287,7 +287,6 @@ async function generate3DTerrain() {
 }
 
 window.onload = async () => {
-    await window.loadLocalConfig();
     window.initLeafletMap();
     window.initThree();
     window.initRainSystem();

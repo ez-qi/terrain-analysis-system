@@ -3,6 +3,7 @@
 .env.development.local
 .env.production.local
 js/config.local.js
+client/js/config.local.js
 # 允许提交模板
 !.env.example
 !.config.example.js
