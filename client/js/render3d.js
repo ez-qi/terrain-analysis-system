@@ -3,13 +3,13 @@
 // 共享变量挂在 window 上，方便其他 ESM 模块访问
 window.scene3d = undefined;
 window.camera3d = undefined;
-window.window.renderer3d = undefined;
+window.renderer3d = undefined;
 window.controls3d = undefined;
 window.terrainMesh = undefined;
 window.terrainSidesGroup = undefined;
 window.labelGroup = undefined;
 window.bannerTimer = undefined;
-window.window.satelliteTexture = undefined;
+window.satelliteTexture = undefined;
 window.lastMinHeight = 0;
 window.lastMaxHeight = 0;
 window.isFirstRender = false;

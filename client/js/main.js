@@ -16,10 +16,10 @@ let selectionRect; window.selectionRect = selectionRect;
 let raycaster; window.raycaster = raycaster;
 let mouse; window.mouse = mouse;
 // 共享原始类型直接挂在 window 上（其他模块通过 window.* 读取）
-window.window.activeLat = 36.2500;
-window.window.activeLon = 117.1000;
-window.window.activeName = '泰北';
-window.window.fetchedElevationGrid = null;
+window.activeLat = 36.2500;
+window.activeLon = 117.1000;
+window.activeName = '泰北';
+window.fetchedElevationGrid = null;
 
 function selectPreset(lon, lat, name) {
     window.activeLon = lon;
@@ -316,7 +316,7 @@ window.onload = async () => {
 
     document.getElementById('meshSize').addEventListener('input', (e) => {
         document.getElementById('meshSizeVal').innerText = e.target.value + " 米";
-        window.drawSelectionBox(window.window.activeLat, window.window.activeLon);
+        window.drawSelectionBox(window.activeLat, window.activeLon);
     });
 
     document.getElementById('contourSpacing').addEventListener('input', (e) => {
