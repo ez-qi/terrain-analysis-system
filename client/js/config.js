@@ -9,7 +9,9 @@ window.loadLocalConfig = loadLocalConfig;
 function getTdtTk() {
     return '';  // 密钥在后端，通过 /api/tiles 代理
 }
+window.getTdtTk = getTdtTk;
 
 function getApiKey() {
     return '';  // 密钥在后端，通过 /api/proxy/ai 代理
 }
+window.getApiKey = getApiKey;

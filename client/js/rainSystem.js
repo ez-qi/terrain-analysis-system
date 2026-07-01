@@ -353,7 +353,7 @@
          activeBtn.classList.add('bg-blue-600', 'text-white', 'border-blue-500');
      }
  
-     showBanner('已应用 "' + preset.name + '" 预设 (' + preset.rate + 'mm/h)', false);
+     window.showBanner('已应用 "' + preset.name + '" 预设 (' + preset.rate + 'mm/h)', false);
  }
  
  /**

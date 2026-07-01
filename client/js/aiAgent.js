@@ -31,7 +31,7 @@ async function callLLMToAnalyzeRegion(userQuery) {
 
     } catch (err) {
         console.error(err);
-        showBanner("❌ AI 定位失败！" + err.message + "。推荐直接使用地图选区或推荐预设进行稳定展示。");
+        window.showBanner("❌ AI 定位失败！" + err.message + "。推荐直接使用地图选区或推荐预设进行稳定展示。");
         loadingEl.style.display = 'none';
     }
 }

@@ -86,7 +86,7 @@ function loadSatelliteTexture(material) {
         document.getElementById('loadingTitle').innerText = "正在拉取卫星影像";
         document.getElementById('loadingText').innerText = "正在向天地图获取高清无偏移遥感贴图...";
 
-        const tdtTk = getTdtTk();        // 智能清晰度补偿：根据网格物理尺寸，动态调整天地图缩放层级。区域范围越小，需要的清晰度越高
+        const tdtTk = window.getTdtTk();        // 智能清晰度补偿：根据网格物理尺寸，动态调整天地图缩放层级。区域范围越小，需要的清晰度越高
         const meshPhysicalSize = parseFloat(document.getElementById('meshSize').value);
         let optimalZoom = 13; // 默认 2400m
         if (meshPhysicalSize <= 1200) optimalZoom = 15;
@@ -110,7 +110,7 @@ function loadSatelliteTexture(material) {
             undefined,
             function (err) {
                 console.warn(err);
-                showBanner("天地图资源获取失败，本地已自动降级为智能高程分层纹理", true);
+                window.showBanner("天地图资源获取失败，本地已自动降级为智能高程分层纹理", true);
                 document.getElementById('textureMode').value = 'procedural';
                 material.uniforms.uTextureMode.value = 0.0;
                 resolve(false); // 加载失败，允许关闭加载遮罩
@@ -280,9 +280,9 @@ async function generate3DTerrain() {
     window.isFirstRender = false;
 
     if (window.fetchedElevationGrid) {
-        showBanner(`地形生成成功！范围：${(size / 1000).toFixed(1)}千米，最大高差：${(maxHeight - minHeight).toFixed(0)}米`);
+        window.showBanner(`地形生成成功！范围：${(size / 1000).toFixed(1)}千米，最大高差：${(maxHeight - minHeight).toFixed(0)}米`);
     } else {
-        showBanner(`高程接口超时，已自动适配本地程序化地形噪声渲染`);
+        window.showBanner(`高程接口超时，已自动适配本地程序化地形噪声渲染`);
     }
 }
 
@@ -352,7 +352,7 @@ window.onload = async () => {
     const aiEcoBtn = document.getElementById('aiEcoBtn');
     if (aiEcoBtn) {
         aiEcoBtn.addEventListener('click', async () => {
-            const currentApiKey = getApiKey();
+            const currentApiKey = window.getApiKey();
             if (!currentApiKey) { alert("缺少API密钥"); return; }
 
             try {
