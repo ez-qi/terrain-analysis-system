@@ -3,10 +3,35 @@
 let elevationGridSize = 10;
 
 async function fetchRealElevation(centerLat, centerLon) {
+    const meshPhysicalSize = parseFloat(document.getElementById('meshSize').value);
+    const size = elevationGridSize;
+
+    // 优先调用后端 DEM 服务
+    try {
+        const response = await fetch(
+            `/api/dem/elevation?lat=${centerLat}&lon=${centerLon}&size=${meshPhysicalSize}&resolution=${size}`
+        );
+        if (!response.ok) throw new Error('后端 DEM 请求异常');
+
+        const data = await response.json();
+        if (data.elevation && data.elevation.length > 0) {
+            return data.elevation;
+        }
+    } catch (err) {
+        console.warn('本地 DEM 服务不可用，回退到 Open-Meteo:', err.message);
+    }
+
+    // 回退方案：从 Open-Meteo 免费 API 获取高程
+    return await fetchOpenMeteoFallback(centerLat, centerLon);
+}
+
+/**
+ * 回退方案：从 Open-Meteo 免费 API 获取高程
+ */
+async function fetchOpenMeteoFallback(centerLat, centerLon) {
     const size = elevationGridSize;
     const lats = [];
     const lons = [];
-    
     const meshPhysicalSize = parseFloat(document.getElementById('meshSize').value);
     const halfRange = (meshPhysicalSize / 2400) * 0.05;
 
@@ -20,17 +45,13 @@ async function fetchRealElevation(centerLat, centerLon) {
     }
 
     const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats.join(',')}&longitude=${lons.join(',')}`;
-
     try {
         const response = await fetch(url);
-        if (!response.ok) throw new Error("高程请求异常");
+        if (!response.ok) throw new Error('Open-Meteo 高程请求异常');
         const data = await response.json();
-        if (data && data.elevation) {
-            return data.elevation;
-        }
-        return null;
+        return data.elevation || null;
     } catch (err) {
-        console.warn("云端 DEM 加载故障，自动回退空间自适应噪波:", err);
+        console.warn('Open-Meteo 也失败了，回退程序化噪波:', err.message);
         return null;
     }
 }
