@@ -1,17 +1,17 @@
 ﻿// Three.js 三维 WebGL 渲染管线与标准覆盖模式
 
 // 共享变量挂在 window 上，方便其他 ESM 模块访问
-window.window.scene3d = undefined;
-window.window.camera3d = undefined;
-window.renderer3d = undefined;
-window.window.controls3d = undefined;
-window.window.terrainMesh = undefined;
-window.window.terrainSidesGroup = undefined;
-window.window.labelGroup = undefined;
-window.window.bannerTimer = undefined;
-window.satelliteTexture = undefined;
-window.window.lastMinHeight = 0;
-window.window.lastMaxHeight = 0;
+window.scene3d = undefined;
+window.camera3d = undefined;
+window.window.renderer3d = undefined;
+window.controls3d = undefined;
+window.terrainMesh = undefined;
+window.terrainSidesGroup = undefined;
+window.labelGroup = undefined;
+window.bannerTimer = undefined;
+window.window.satelliteTexture = undefined;
+window.lastMinHeight = 0;
+window.lastMaxHeight = 0;
 window.isFirstRender = false;
 
 function initThree() {
@@ -36,13 +36,13 @@ function initThree() {
     window.terrainSidesGroup = new THREE.Group();
     window.scene3d.add(window.terrainSidesGroup);
 
-    renderer3d = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer3d.setPixelRatio(window.devicePixelRatio);
-    renderer3d.setSize(container.clientWidth, container.clientHeight);
-    renderer3d.domElement.style.display = 'block';
-    container.appendChild(renderer3d.domElement);
+    window.renderer3d = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    window.renderer3d.setPixelRatio(window.devicePixelRatio);
+    window.renderer3d.setSize(container.clientWidth, container.clientHeight);
+    window.renderer3d.domElement.style.display = 'block';
+    container.appendChild(window.renderer3d.domElement);
 
-    window.controls3d = new THREE.OrbitControls(window.camera3d, renderer3d.domElement);
+    window.controls3d = new THREE.OrbitControls(window.camera3d, window.renderer3d.domElement);
     window.controls3d.enableDamping = true;
     window.controls3d.target.set(0, 0, 0);
     window.controls3d.update();
@@ -50,18 +50,18 @@ function initThree() {
     window.addEventListener('resize', onWindowResize);
 
     const data = new Uint8Array([200, 200, 200, 255, 200, 200, 200, 255, 200, 200, 200, 255, 200, 200, 200, 255]);
-    satelliteTexture = new THREE.DataTexture(data, 2, 2, THREE.RGBAFormat);
-    satelliteTexture.needsUpdate = true;
+    window.satelliteTexture = new THREE.DataTexture(data, 2, 2, THREE.RGBAFormat);
+    window.satelliteTexture.needsUpdate = true;
 
     animate();
 }
 
 function onWindowResize() {
     const container = document.getElementById('threeCanvas');
-    if (!renderer3d || !window.camera3d) return;
+    if (!window.renderer3d || !window.camera3d) return;
     window.camera3d.aspect = container.clientWidth / container.clientHeight;
     window.camera3d.updateProjectionMatrix();
-    renderer3d.setSize(container.clientWidth, container.clientHeight);
+    window.renderer3d.setSize(container.clientWidth, container.clientHeight);
 }
 
 function animate() {
@@ -70,7 +70,7 @@ function animate() {
         window.terrainMesh.material.uniforms.uTime.value += 0.01;
     }
     if (window.controls3d) window.controls3d.update();
-    if (renderer3d) renderer3d.render(window.scene3d, window.camera3d);
+    if (window.renderer3d) window.renderer3d.render(window.scene3d, window.camera3d);
 }
 
 function disposeGroup(group) {
@@ -171,7 +171,7 @@ function generate3DTerrain() {
             uContourColor: { value: contourColor },
             uContourLineWidth: { value: parseFloat(document.getElementById('contourLineWidth').value) },
             uTextureMode: { value: textureMode === 'satellite' ? 1.0 : 0.0 },
-            uSatelliteTex: { value: satelliteTexture },
+            uSatelliteTex: { value: window.satelliteTexture },
             uSunDirection: { value: new THREE.Vector3(0.4, 0.8, 0.3).normalize() },
             uWaterHeight: { value: waterHeight },
             uTime: { value: 0.0 }
@@ -227,9 +227,9 @@ function generate3DTerrain() {
 }
 
 function onCanvasClick(event) {
-    if (!window.terrainMesh || !renderer3d) return;
+    if (!window.terrainMesh || !window.renderer3d) return;
 
-    const rect = renderer3d.domElement.getBoundingClientRect();
+    const rect = window.renderer3d.domElement.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
@@ -507,3 +507,14 @@ function updateContourSpacing(value, finalize = false) {
         console.warn('updateContourSpacing 失败', e);
     }
 }
+
+// ESM 导出 — 供其他模块调用
+window.initThree = initThree;
+window.onCanvasClick = onCanvasClick;
+window.showBanner = showBanner;
+window.toggleWireframe = toggleWireframe;
+window.toggleAutoSpacing = toggleAutoSpacing;
+window.toggleLabels = toggleLabels;
+window.buildTerrainSidesAndBottom = buildTerrainSidesAndBottom;
+window.renderContourLabels = renderContourLabels;
+window.updateContourSpacing = updateContourSpacing;
