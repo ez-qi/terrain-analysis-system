@@ -1,4 +1,13 @@
-﻿// 系统核心 Orchestrator 驱动控制器
+﻿// 系统核心 Orchestrator 驱动控制器（ESM 入口）
+
+// 导入所有模块
+import './config.js';
+import './shaders.js';
+import './terrainEngine.js';
+import './map2d.js';
+import './render3d.js';
+import './aiAgent.js';
+import './rainSystem.js';
 
 let map2d;
 let marker2d;
@@ -74,9 +83,7 @@ function loadSatelliteTexture(material) {
         document.getElementById('loadingTitle').innerText = "正在拉取卫星影像";
         document.getElementById('loadingText').innerText = "正在向天地图获取高清无偏移遥感贴图...";
 
-        const tdtTk = getTdtTk();
-
-        // 智能清晰度补偿：根据网格物理尺寸，动态调整天地图缩放层级。区域范围越小，需要的清晰度越高
+        const tdtTk = getTdtTk();        // 智能清晰度补偿：根据网格物理尺寸，动态调整天地图缩放层级。区域范围越小，需要的清晰度越高
         const meshPhysicalSize = parseFloat(document.getElementById('meshSize').value);
         let optimalZoom = 13; // 默认 2400m
         if (meshPhysicalSize <= 1200) optimalZoom = 15;
@@ -84,7 +91,8 @@ function loadSatelliteTexture(material) {
         else if (meshPhysicalSize <= 3500) optimalZoom = 13;
         else optimalZoom = 12;
 
-        const staticUrl = `https://api.tianditu.gov.cn/staticimage?center=${activeLon},${activeLat}&width=1024&height=1024&zoom=${optimalZoom}&layers=img_c&tk=${tdtTk}`;
+        // 通过后端代理获取天地图卫星影像（隐藏 Token）
+        const staticUrl = `/api/tiles/static?lon=${activeLon}&lat=${activeLat}&zoom=${optimalZoom}`;
 
         const loader = new THREE.TextureLoader();
         loader.setCrossOrigin('anonymous');
@@ -375,3 +383,19 @@ window.onload = async () => {
 
     generate3DTerrain();
 };
+
+// 显式挂载 HTML onclick 回调到 window（ESM 兼容）
+window.selectPreset = selectPreset;
+window.toggleMenu = toggleMenu;
+window.toggleWireframe = toggleWireframe;
+window.toggleAutoSpacing = toggleAutoSpacing;
+window.toggleLabels = toggleLabels;
+window.updateWaterPlane = updateWaterPlane;
+window.updateSunDirection = updateSunDirection;
+window.updateContourWidth = updateContourWidth;
+window.updateLabelOffset = updateLabelOffset;
+window.applyRainPreset = applyRainPreset;
+window.setRainTimeSpeed = setRainTimeSpeed;
+window.toggleRainPlay = toggleRainPlay;
+window.resetRainSimulation = resetRainSimulation;
+window.onRainTimeSliderChange = onRainTimeSliderChange;
