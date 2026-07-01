@@ -24,7 +24,12 @@ router.get('/:z/:x/:y', async (req, res, next) => {
 
     const url = `https://t0.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX=${z}&TILEROW=${y}&TILECOL=${x}&tk=${config.tdtTk}`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        'Referer': req.headers.referer || 'http://localhost:3000',
+        'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0'
+      }
+    });
     if (!response.ok) throw new Error(`天地图瓦片错误: ${response.status}`);
 
     const buffer = await response.arrayBuffer();
@@ -54,8 +59,16 @@ router.get('/static', async (req, res, next) => {
 
     const url = `https://api.tianditu.gov.cn/staticimage?center=${lon},${lat}&width=1024&height=1024&zoom=${zoom}&layers=img_c&tk=${config.tdtTk}`;
 
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`天地图静态图错误: ${response.status}`);
+    const response = await fetch(url, {
+      headers: {
+        'Referer': req.headers.referer || 'http://localhost:3000',
+        'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0'
+      }
+    });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(`天地图静态图错误: ${response.status} — ${errorText}`);
+    }
 
     const buffer = await response.arrayBuffer();
     res.set('Content-Type', 'image/png');
