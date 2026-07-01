@@ -170,3 +170,9 @@ void main() {
     gl_FragColor = vec4(finalColor * 0.85, 1.0);
 }
 `;
+
+// ESM 导出 — 供 main.js 的 generate3DTerrain 使用
+window.terrainVertexShader = terrainVertexShader;
+window.terrainFragmentShader = terrainFragmentShader;
+window.sideVertexShader = sideVertexShader;
+window.sideFragmentShader = sideFragmentShader;

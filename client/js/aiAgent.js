@@ -25,9 +25,9 @@ async function callLLMToAnalyzeRegion(userQuery) {
         window.activeName = parsed.name;
 
         window.marker2d.setLatLng([window.activeLat, window.activeLon]);
-        drawSelectionBox(window.activeLat, window.activeLon);
+        window.drawSelectionBox(window.activeLat, window.activeLon);
 
-        generate3DTerrain();
+        window.generate3DTerrain();
 
     } catch (err) {
         console.error(err);

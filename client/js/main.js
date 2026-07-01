@@ -9,12 +9,12 @@ import './render3d.js';
 import './aiAgent.js';
 import './rainSystem.js';
 
-// 共享变量声明（同时挂到 window 上供其他 ESM 模块访问）
-let map2d; window.map2d = map2d;
-let marker2d; window.marker2d = marker2d;
-let selectionRect; window.selectionRect = selectionRect;
-let raycaster; window.raycaster = raycaster;
-let mouse; window.mouse = mouse;
+// 共享变量声明 — 通过 window.* 跨模块共享（不使用 let+window 双绑定）
+window.map2d = undefined;
+window.marker2d = undefined;
+window.selectionRect = undefined;
+window.raycaster = undefined;
+window.mouse = undefined;
 // 共享原始类型直接挂在 window 上（其他模块通过 window.* 读取）
 window.activeLat = 36.2500;
 window.activeLon = 117.1000;
@@ -28,8 +28,8 @@ function selectPreset(lon, lat, name) {
 
     document.getElementById('mapLon').innerText = lon.toFixed(4);
     document.getElementById('mapLat').innerText = lat.toFixed(4);
-    marker2d.setLatLng([lat, lon]);
-    drawSelectionBox(lat, lon);
+    window.marker2d.setLatLng([lat, lon]);
+    window.drawSelectionBox(lat, lon);
 
     generate3DTerrain();
 }
@@ -222,8 +222,8 @@ async function generate3DTerrain() {
     else if (textureMode === 'riskMap') textureModeEnum = 2.0;
 
     const terrainMaterial = new THREE.ShaderMaterial({
-        vertexShader: terrainVertexShader,
-        fragmentShader: terrainFragmentShader,
+        vertexShader: window.terrainVertexShader,
+        fragmentShader: window.terrainFragmentShader,
         uniforms: {
             uShowContours: { value: 1.0 },
             uContourSpacing: { value: spacing * exaggeration },

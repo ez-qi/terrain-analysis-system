@@ -230,11 +230,11 @@ function onCanvasClick(event) {
     if (!window.terrainMesh || !window.renderer3d) return;
 
     const rect = window.renderer3d.domElement.getBoundingClientRect();
-    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    window.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    window.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-    raycaster.setFromCamera(mouse, window.camera3d);
-    const intersects = raycaster.intersectObject(window.terrainMesh, true);
+    window.raycaster.setFromCamera(window.mouse, window.camera3d);
+    const intersects = window.raycaster.intersectObject(window.terrainMesh, true);
     if (intersects.length > 0) {
         const point = intersects[0].point;
         document.getElementById('measureHeight').innerText = `${point.y.toFixed(1)} 米`;
