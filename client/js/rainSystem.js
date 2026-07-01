@@ -4,10 +4,10 @@
  // 职责: 管理三维地形上的实时降雨粒子动画与水位动态累积
  // ============================================================
  
- let rainSystemInstance = null;    // 全局降雨系统实例
+ window.window.rainSystemInstance = null;    // 全局降雨系统实例
  let rainTimer = null;             // 降雨计时器(秒)
  let rainAccumulation = 0;         // 累计降雨量(mm)
- let rainPlaying = false;          // 播放状态
+ window.window.rainPlaying = false;          // 播放状态
  let rainElapsedHours = 0;         // 经过的模拟小时数
  let lastRainTimestamp = 0;        // 上次更新时间戳
  const MAX_SIM_HOURS = 72;         // 最大模拟小时数
@@ -209,11 +209,11 @@
      rainTimer = 0;
      rainAccumulation = 0;
      rainElapsedHours = 0;
-     rainPlaying = false;
+     window.rainPlaying = false;
      currentRainPreset = 'moderate';
      lastRainTimestamp = performance.now();
  
-     rainSystemInstance = new RainSystem();
+     window.rainSystemInstance = new RainSystem();
      scheduleRainUpdate();
  }
  
@@ -221,21 +221,21 @@
   * 启动/重建降雨粒子（地形重新生成后调用）
   */
  function setupRainParticles() {
-     if (!rainSystemInstance) {
-         rainSystemInstance = new RainSystem();
+     if (!window.rainSystemInstance) {
+         window.rainSystemInstance = new RainSystem();
      }
  
      const terrainSize = parseFloat(document.getElementById('meshSize').value) || 2400;
-     const maxHeight = lastMaxHeight || 1500;
+     const maxHeight = window.lastMaxHeight || 1500;
      const exaggeration = parseFloat(document.getElementById('exaggeration').value) || 1.5;
  
-     rainSystemInstance.init(scene3d, terrainSize, maxHeight * exaggeration + 200);
+     window.rainSystemInstance.init(window.scene3d, terrainSize, maxHeight * exaggeration + 200);
  
      const preset = RAIN_PRESETS[currentRainPreset];
      const precipVal = parseFloat(document.getElementById('precipitation').value) || 0;
      const intensity = Math.min(1, precipVal / 200);
-     rainSystemInstance.setIntensity(intensity, preset.particles);
-     rainSystemInstance.setOpacity(rainPlaying ? 1.0 : 0.0);
+     window.rainSystemInstance.setIntensity(intensity, preset.particles);
+     window.rainSystemInstance.setOpacity(window.rainPlaying ? 1.0 : 0.0);
  }
  
  /**
@@ -247,7 +247,7 @@
      }
  
      function tick() {
-         if (rainPlaying && terrainMesh && rainSystemInstance) {
+         if (window.rainPlaying && window.terrainMesh && window.rainSystemInstance) {
              const now = performance.now();
              const rawDelta = (now - lastRainTimestamp) / 1000;
              lastRainTimestamp = now;
@@ -277,21 +277,21 @@
  
              // 更新粒子动画
              const speedMult = Math.max(0.1, (rainRate / 80) * 2);
-             rainSystemInstance.update(deltaTime, speedMult);
+             window.rainSystemInstance.update(deltaTime, speedMult);
  
              updateRainUI();
  
-             if (terrainMesh && terrainMesh.material.uniforms) {
-                 if (terrainMesh.material.uniforms.uPrecipitation) {
-                     terrainMesh.material.uniforms.uPrecipitation.value = rainRate;
+             if (window.terrainMesh && window.terrainMesh.material.uniforms) {
+                 if (window.terrainMesh.material.uniforms.uPrecipitation) {
+                     window.terrainMesh.material.uniforms.uPrecipitation.value = rainRate;
                  }
-                 if (terrainMesh.material.uniforms.uTime) {
-                     terrainMesh.material.uniforms.uTime.value += deltaTime * 2;
+                 if (window.terrainMesh.material.uniforms.uTime) {
+                     window.terrainMesh.material.uniforms.uTime.value += deltaTime * 2;
                  }
              }
-         } else if (rainSystemInstance) {
-             if (terrainMesh && terrainMesh.material.uniforms && terrainMesh.material.uniforms.uTime) {
-                 terrainMesh.material.uniforms.uTime.value += 0.005;
+         } else if (window.rainSystemInstance) {
+             if (window.terrainMesh && window.terrainMesh.material.uniforms && window.terrainMesh.material.uniforms.uTime) {
+                 window.terrainMesh.material.uniforms.uTime.value += 0.005;
              }
          }
          rainTimer = requestAnimationFrame(tick);
@@ -303,18 +303,18 @@
   * 切换播放/暂停状态
   */
  function toggleRainPlay() {
-     rainPlaying = !rainPlaying;
+     window.rainPlaying = !window.rainPlaying;
      lastRainTimestamp = performance.now();
  
      const btn = document.getElementById('rainPlayBtn');
-     if (rainPlaying) {
-         if (rainSystemInstance) {
-             rainSystemInstance.setOpacity(1.0);
+     if (window.rainPlaying) {
+         if (window.rainSystemInstance) {
+             window.rainSystemInstance.setOpacity(1.0);
          }
          if (btn) { btn.innerHTML = '⏸ 暂停'; }
      } else {
-         if (rainSystemInstance) {
-             rainSystemInstance.setOpacity(0.0);
+         if (window.rainSystemInstance) {
+             window.rainSystemInstance.setOpacity(0.0);
          }
          if (btn) { btn.innerHTML = '▶ 播放'; }
      }
@@ -333,14 +333,14 @@
      if (precipSlider) {
          precipSlider.value = preset.rate;
          document.getElementById('precipVal').innerText = preset.rate + ' mm';
-         if (terrainMesh && terrainMesh.material.uniforms && terrainMesh.material.uniforms.uPrecipitation) {
-             terrainMesh.material.uniforms.uPrecipitation.value = preset.rate;
+         if (window.terrainMesh && window.terrainMesh.material.uniforms && window.terrainMesh.material.uniforms.uPrecipitation) {
+             window.terrainMesh.material.uniforms.uPrecipitation.value = preset.rate;
          }
      }
  
      const intensity = Math.min(1, preset.rate / 200);
-     if (rainSystemInstance) {
-         rainSystemInstance.setIntensity(intensity, preset.particles);
+     if (window.rainSystemInstance) {
+         window.rainSystemInstance.setIntensity(intensity, preset.particles);
      }
  
      document.querySelectorAll('.rain-preset-btn').forEach(btn => {
@@ -385,7 +385,7 @@
          window.updateWaterPlane(0);
      }
  
-     if (rainPlaying) {
+     if (window.rainPlaying) {
          toggleRainPlay();
      }
  
@@ -427,7 +427,7 @@
      const h = parseFloat(hours) || 0;
      rainElapsedHours = Math.min(MAX_SIM_HOURS, Math.max(0, h));
  
-     if (!rainPlaying) {
+     if (!window.rainPlaying) {
          const precipSlider = document.getElementById('precipitation');
          const rainRate = parseFloat(precipSlider?.value || 0);
          rainAccumulation = rainRate * rainElapsedHours * 0.15;
@@ -446,8 +446,8 @@
   * 清理降雨系统（地形重建时调用）
   */
  function cleanupRainSystem() {
-     if (rainSystemInstance) {
-         rainSystemInstance.destroy();
+     if (window.rainSystemInstance) {
+         window.rainSystemInstance.destroy();
      }
  }
 

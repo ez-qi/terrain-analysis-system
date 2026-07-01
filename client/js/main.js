@@ -272,8 +272,8 @@ async function generate3DTerrain() {
     setupRainParticles();
 
     // 恢复暂停时的水位状态
-    if (rainPlaying) {
-        rainSystemInstance?.setOpacity(1.0);
+    if (window.rainPlaying) {
+        window.rainSystemInstance?.setOpacity(1.0);
     }
 
     loadingEl.style.display = 'none'; // 此时资源全部就绪，关闭加载遮罩
