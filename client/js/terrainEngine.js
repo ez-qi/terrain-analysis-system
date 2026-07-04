@@ -112,3 +112,106 @@ window.interpolateHeight = interpolateHeight;
 window.fbm = fbm;
 window.noise = noise;
 window.hash = hash;
+
+// ==========================================
+// WebWorker 地形几何体生成（带主线程回退）
+// ==========================================
+let terrainWorkerInstance = null;
+function getTerrainWorker() {
+    if (!terrainWorkerInstance) {
+        terrainWorkerInstance = new Worker(new URL('./terrainWorker.js', import.meta.url), { type: 'module' });
+    }
+    return terrainWorkerInstance;
+}
+
+/**
+ * 异步构建地形几何体数据（Worker 线程）。
+ * 失败时回退到主线程同步生成（保证功能不退化）。
+ * @returns {Promise<{positions: Float32Array, normals: Float32Array, uvs: Float32Array, indices: Uint16Array, minHeight: number, maxHeight: number}>}
+ */
+function buildTerrainGeometryAsync(elevationGrid, gridSize, size, exaggeration, activeLat, activeLon) {
+    return new Promise((resolve) => {
+        let settled = false;
+        const worker = getTerrainWorker();
+
+        const onMessage = (e) => {
+            if (settled) return;
+            settled = true;
+            worker.removeEventListener('message', onMessage);
+            worker.removeEventListener('error', onError);
+            if (e.data && e.data.error) {
+                console.warn('Worker 几何体生成失败，回退主线程:', e.data.error);
+                resolve(buildTerrainGeometrySync(elevationGrid, gridSize, size, exaggeration, activeLat, activeLon));
+            } else {
+                resolve(e.data);
+            }
+        };
+        const onError = (err) => {
+            if (settled) return;
+            settled = true;
+            worker.removeEventListener('message', onMessage);
+            worker.removeEventListener('error', onError);
+            console.warn('Worker 异常，回退主线程:', err.message || err);
+            resolve(buildTerrainGeometrySync(elevationGrid, gridSize, size, exaggeration, activeLat, activeLon));
+        };
+
+        worker.addEventListener('message', onMessage);
+        worker.addEventListener('error', onError);
+        worker.postMessage({
+            type: 'build',
+            elevation: elevationGrid,
+            gridSize,
+            size,
+            exaggeration,
+            activeLat,
+            activeLon
+        }, []);  // 输入不转移（主线程仍需保留 elevationGrid）
+    });
+}
+
+/**
+ * 主线程同步回退实现（与 terrainWorker.js buildGeometry 算法一致）。
+ * 用 THREE.PlaneGeometry + 修改 positions + computeVertexNormals，保持原行为。
+ */
+function buildTerrainGeometrySync(elevationGrid, gridSize, size, exaggeration, activeLat, activeLon) {
+    const geometry = new THREE.PlaneGeometry(size, size, gridSize, gridSize);
+    geometry.rotateX(-Math.PI / 2);
+    const positions = geometry.attributes.position.array;
+    const count = positions.length / 3;
+    let minHeight = Infinity;
+    let maxHeight = -Infinity;
+
+    for (let i = 0; i < count; i++) {
+        const xCoord = positions[i * 3];
+        const zCoord = positions[i * 3 + 2];
+        const u = (xCoord + size / 2) / size;
+        const v = (zCoord + size / 2) / size;
+        let height = 0.0;
+        if (elevationGrid) {
+            height = interpolateHeight(u, v, elevationGrid);
+            const detailIntensity = Math.min(1.0, height / 1000.0);
+            height += fbm(u * 15.0 + activeLon, v * 15.0 + activeLat) * 35.0 * detailIntensity;
+        } else {
+            const macroBase = fbm(u * 3.0 + activeLon * 2.3, v * 3.0 + activeLat * 1.7) * 600.0;
+            const microDetail = fbm(u * 12.0 - activeLon, v * 12.0 - activeLat) * 45.0;
+            height = Math.max(5.0, macroBase + microDetail);
+        }
+        positions[i * 3 + 1] = height * exaggeration;
+        if (height < minHeight) minHeight = height;
+        if (height > maxHeight) maxHeight = height;
+    }
+    geometry.computeVertexNormals();
+    const normals = geometry.attributes.normal.array;
+    const uvs = geometry.attributes.uv.array;
+    const indices = geometry.index ? geometry.index.array : new Uint16Array(0);
+    return {
+        positions: new Float32Array(positions),
+        normals: new Float32Array(normals),
+        uvs: new Float32Array(uvs),
+        indices: indices instanceof Uint16Array ? indices : new Uint16Array(indices),
+        minHeight,
+        maxHeight
+    };
+}
+
+window.buildTerrainGeometryAsync = buildTerrainGeometryAsync;
