@@ -11,6 +11,25 @@
  let rainElapsedHours = 0;         // 经过的模拟小时数
  let lastRainTimestamp = 0;        // 上次更新时间戳
  const MAX_SIM_HOURS = 72;         // 最大模拟小时数
+
+ // === 水文参数（水位动态累积） ===
+ const RUNOFF_COEFF = 0.6;         // 有效降雨系数（多少降雨转化为积水，其余下渗）
+ const LOSS_RATE = 0.5;            // 蒸发下渗率（mm/h，雨停或弱雨时水位下降）
+ const MM_TO_METER = 0.15;         // mm 降雨 → 米水位的视觉化换算系数
+
+ /**
+  * 计算给定降雨量和时长下的预测淹没高度（米）
+  * 公式：netAccum = rainRate × hours × RUNOFF_COEFF - LOSS_RATE × hours
+  *       waterHeight = max(0, netAccum × MM_TO_METER)
+  * @param {number} rainRate - 雨强 mm/h
+  * @param {number} hours - 持续小时数
+  * @returns {number} 淹没高度（米，未封顶）
+  */
+ function predictWaterHeight(rainRate, hours) {
+     const accumulatedRain = rainRate * hours;                    // mm
+     const netAccum = accumulatedRain * RUNOFF_COEFF - LOSS_RATE * hours;
+     return Math.max(0, netAccum * MM_TO_METER);
+ }
  
  // 降雨等级预设 (mm/h)
  const RAIN_PRESETS = {
@@ -261,16 +280,16 @@
              const stepRain = rainRate * hoursPerStep;
              rainAccumulation += stepRain;
  
-             // === 水位累积计算 ===
-             const terrainSize = parseFloat(document.getElementById('meshSize').value) || 2400;
-             const accumulationFactor = 0.15;
-             const waterRise = stepRain * accumulationFactor;
- 
+             // === 水位累积计算（基于水文参数） ===
+             // Δh = (stepRain × RUNOFF_COEFF - LOSS_RATE × hoursPerStep) × MM_TO_METER
+             // 雨强 > 损失率时水位上升，雨强 < 损失率时水位下降（退水）
+             const deltaHeight = (stepRain * RUNOFF_COEFF - LOSS_RATE * hoursPerStep) * MM_TO_METER;
+
              const waterSlider = document.getElementById('waterHeight');
              const currentWater = parseFloat(waterSlider.value) || 0;
              const newWater = Math.min(
                  parseFloat(waterSlider.max),
-                 currentWater + waterRise
+                 Math.max(0, currentWater + deltaHeight)
              );
              waterSlider.value = newWater;
              updateWaterPlane(newWater);
@@ -430,13 +449,20 @@
      if (!window.rainPlaying) {
          const precipSlider = document.getElementById('precipitation');
          const rainRate = parseFloat(precipSlider?.value || 0);
-         rainAccumulation = rainRate * rainElapsedHours * 0.15;
- 
+
+         // 预测值：当前雨强持续到该时刻的累计降雨和淹没高度
+         rainAccumulation = rainRate * rainElapsedHours;
+
          const waterSlider = document.getElementById('waterHeight');
          if (waterSlider) {
-             const newWater = Math.min(parseFloat(waterSlider.max), rainAccumulation);
+             const predictedHeight = predictWaterHeight(rainRate, rainElapsedHours);
+             const newWater = Math.min(parseFloat(waterSlider.max), predictedHeight);
              waterSlider.value = newWater;
              window.updateWaterPlane(newWater);
+
+             // 同步预测淹没高度显示
+             const predictEl = document.getElementById('waterHeightPredictDisplay');
+             if (predictEl) predictEl.innerText = newWater.toFixed(1);
          }
          updateRainUI();
      }
