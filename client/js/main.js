@@ -157,40 +157,20 @@ async function generate3DTerrain() {
     window.terrainSidesGroup = new THREE.Group();
     window.scene3d.add(window.terrainSidesGroup);
 
-    // 构建新网格几何体
-    const geometry = new THREE.PlaneGeometry(size, size, gridSize, gridSize);
-    geometry.rotateX(-Math.PI / 2);
+    // 通过 WebWorker 异步构建几何体数据（失败回退主线程同步）
+    const geomData = await buildTerrainGeometryAsync(
+        window.fetchedElevationGrid, gridSize, size, exaggeration,
+        window.activeLat, window.activeLon
+    );
 
-    const positions = geometry.attributes.position.array;
-    const count = positions.length / 3;
+    const { positions, normals, uvs, indices, minHeight, maxHeight } = geomData;
 
-    let minHeight = Infinity;
-    let maxHeight = -Infinity;
-
-    for (let i = 0; i < count; i++) {
-        const xCoord = positions[i * 3];
-        const zCoord = positions[i * 3 + 2];
-        const u = (xCoord + size / 2) / size;
-        const v = (zCoord + size / 2) / size;
-
-        let height = 0.0;
-        if (window.fetchedElevationGrid) {
-            height = interpolateHeight(u, v, window.fetchedElevationGrid);
-            const detailIntensity = Math.min(1.0, height / 1000.0);
-            height += fbm(u * 15.0 + window.activeLon, v * 15.0 + window.activeLat) * 35.0 * detailIntensity;
-        } else {
-            const macroBase = fbm(u * 3.0 + window.activeLon * 2.3, v * 3.0 + window.activeLat * 1.7) * 600.0;
-            const microDetail = fbm(u * 12.0 - window.activeLon, v * 12.0 - window.activeLat) * 45.0;
-            height = Math.max(5.0, macroBase + microDetail);
-        }
-
-        positions[i * 3 + 1] = height * exaggeration;
-
-        if (height < minHeight) minHeight = height;
-        if (height > maxHeight) maxHeight = height;
-    }
-
-    geometry.computeVertexNormals();
+    // 组装 Three.js BufferGeometry
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
 
     let spacing = parseFloat(document.getElementById('contourSpacing').value);
     const isAuto = document.getElementById('autoContourSpacing').checked;
