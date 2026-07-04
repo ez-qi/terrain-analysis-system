@@ -31,6 +31,27 @@ const newWater = Math.min(slider.max, currentWater + waterRise);
 - **方案范围：A** —— 修复并增强现有全局水位平面机制（不引入洼地填充）
 - **退水机制：a** —— 雨停后水位缓慢下降（蒸发下渗）
 - **水位上限：ii** —— `(maxHeight - minHeight) × 0.5 + minHeight`（淹到"半山腰"，考虑地形起伏）
+- **时间滑块拖动语义：C** —— 显示「当前雨强下若持续到该时刻」的预测值
+- **UI 说明方式：C** —— 不改现有标签，加一行小字说明拖动时显示的是预测值
+
+## 新增功能：时间滑块拖动显示预测值
+
+拖动「模拟时间进度」滑块时，实时显示对应时间点的**预测累计降水量**和**预测淹没模拟高度**，按当前雨强滑块值假设持续降雨计算。
+
+**UI 改动（`index.html`）：** 在现有累计降雨显示行下方加一行小字说明，不破坏现有布局。
+
+**计算（`onRainTimeSliderChange`）：** 拖动到 `h` 小时时：
+- 预测累计降雨 = `rainRate × h`（mm）
+- 预测净累积 = `rainRate × h × RUNOFF_COEFF - LOSS_RATE × h`
+- 预测水位 = `max(0, min(slider.max, 预测净累积 × MM_TO_METER))`
+
+**显示同步：**
+- `rainAccumDisplay`（累计降雨 mm）显示预测累计降雨
+- `waterHeightVal`（淹没高度 米）显示预测水位
+- 水位滑块 `waterHeight` value 同步为预测水位
+- 3D 水面 `uWaterHeight` 同步更新（调用 `updateWaterPlane`）
+
+**与播放的语义区分：** 播放时显示真实累积值；拖动时显示预测值。通过一行小字说明告知用户语义。
 
 ## 设计
 
@@ -114,7 +135,9 @@ const newWater = Math.max(0, netAccum × MM_TO_METER);
 | 大暴雨播放 10 小时 | 水位上升至 slider.max 后封顶 |
 | 雨强拉到 0 后继续播放 | 水位缓慢下降（退水） |
 | 重置按钮 | 水位归零、时间归零 |
-| 拖时间滑块到 5 小时（非播放态） | 水位 = `max(0, (rainRate×5×0.6 - 0.5×5) × 0.15)` |
+| 拖时间滑块到 5 小时（非播放态） | 累计降雨 = `rainRate×5`，预测淹没高度 = `max(0, (rainRate×5×0.6 - 0.5×5)×0.15)`，水面同步更新 |
+| 拖时间滑块时 UI | 显示预测淹没高度数值 + 小字说明"拖动时间轴显示当前雨强下的预测值" |
+| 播放态拖时间滑块 | 无效（保持现有行为，播放中不响应拖动） |
 | 生成新地形后 | slider.max = 半山腰高度，水不会淹到山顶 |
 | 降雨/水位/3D 渲染均无报错 | 行为不退化 |
 
@@ -126,3 +149,42 @@ const newWater = Math.max(0, netAccum × MM_TO_METER);
 - 多洼地独立蓄水
 - 真实水文物理模型（当前是视觉化简化）
 - 单元测试（前端原生 JS 无测试框架，端到端验证即可）
+- 记录播放历史雨强（拖动时按历史回放）—— YAGNI，采用预测值模型
+
+### 8. 附加功能：拖动时间滑块显示预测值
+
+**需求：** 拖动「模拟时间进度」滑块时，实时显示对应时间点的累计降水量和淹没模拟高度。
+
+**语义（brainstorming 确认）：** 拖动时显示的是**预测值** —— "当前雨强下若持续到该时刻"的累计降水和水位，非真实播放历史。播放过程中用户改过雨强的话，拖动值与播放累积值不一致是预期行为。
+
+**计算公式（与第 1 节一致）：**
+
+```
+accumulatedRain = rainRate × hours                     // mm，累计降雨
+netAccum = accumulatedRain × RUNOFF_COEFF - LOSS_RATE × hours
+waterHeight = max(0, min(slider.max, netAccum × MM_TO_METER))   // m，淹没高度
+```
+
+**UI 处理（brainstorming 确认：C）：** 不改现有标签，在降雨控制面板的累计/雨强行下方加一行小字说明拖动语义。新增一个 `#waterHeightPredictDisplay` 元素显示预测淹没高度。
+
+**改动点：**
+
+| 文件 | 改动 |
+|---|---|
+| `client/js/rainSystem.js` | `onRainTimeSliderChange` 改为：按预测公式重算累计降雨和水位，同步更新 `#rainAccumDisplay` 和新增的 `#waterHeightPredictDisplay`，并调用 `updateWaterPlane` |
+| `client/index.html` | 在累计/雨强行下方新增一行：小字说明 + 预测淹没高度显示元素 |
+
+**显示规则：**
+- **非播放态拖动时间滑块：** 显示预测值（累计降雨 + 预测淹没高度），水位平面同步更新到预测值
+- **播放态：** 拖动滑块无效（保持现有行为，播放中以实际累积为准）—— 现有 `onRainTimeSliderChange` 已有 `if (!window.rainPlaying)` 守卫，保留
+
+**UI 新增结构（在 `index.html` 第 189 行后）：**
+
+```html
+<div class="text-[10px] text-slate-500 mt-0.5">
+  * 拖动时间轴显示当前雨强下的预测值
+</div>
+<div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-40 p-2 rounded mt-1">
+  <span class="text-slate-400">预测淹没高度: <span id="waterHeightPredictDisplay" class="text-cyan-300 font-bold">0</span> 米</span>
+</div>
+```
