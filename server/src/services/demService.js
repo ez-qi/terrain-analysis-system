@@ -1,6 +1,18 @@
 import { readFile, readdir } from 'fs/promises';
 import { resolve, extname } from 'path';
 import { config } from '../config/index.js';
+import { MemoryLRU } from './cache.js';
+
+// DEM 结果缓存（容量 50 条，单条约 128KB）
+const demCache = new MemoryLRU(50);
+const cacheStats = { hits: 0, misses: 0 };
+
+/**
+ * 量化坐标到 4 位小数，构造缓存 key
+ */
+function buildCacheKey(centerLat, centerLon, sizeMeters, gridResolution) {
+  return `${centerLat.toFixed(4)},${centerLon.toFixed(4)},${sizeMeters},${gridResolution}`;
+}
 
 // 延迟加载 geotiff.js（ESM 兼容）
 let geotiffModule;
@@ -85,8 +97,20 @@ async function findDemFile(lat, lon) {
  * @returns {{ elevation: number[], metadata: { min, max, mean, source } } | null}
  */
 export async function getElevationGrid(centerLat, centerLon, sizeMeters, gridResolution) {
+  const key = buildCacheKey(centerLat, centerLon, sizeMeters, gridResolution);
+
+  const cached = demCache.get(key);
+  if (cached !== undefined) {
+    cacheStats.hits++;
+    return cached;
+  }
+  cacheStats.misses++;
+
   const demFile = await findDemFile(centerLat, centerLon);
-  if (!demFile) return null;
+  if (!demFile) {
+    demCache.set(key, null);
+    return null;
+  }
 
   const { data, width, height, bbox } = demFile;
   const halfDeg = (sizeMeters / 2400) * 0.05;
@@ -120,7 +144,7 @@ export async function getElevationGrid(centerLat, centerLon, sizeMeters, gridRes
     }
   }
 
-  return {
+  const result = {
     elevation: Array.from(elevation),
     metadata: {
       min: Math.round(min),
@@ -129,4 +153,12 @@ export async function getElevationGrid(centerLat, centerLon, sizeMeters, gridRes
       source: demFile.filepath.split('\\').pop().split('/').pop()
     }
   };
+
+  demCache.set(key, result);
+  return result;
+}
+
+// 供测试用：暴露缓存命中/未命中计数
+export function __cacheStats() {
+  return { hits: cacheStats.hits, misses: cacheStats.misses };
 }
