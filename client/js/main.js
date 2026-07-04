@@ -228,7 +228,7 @@ async function generate3DTerrain() {
     renderContourLabels(minHeight, maxHeight, spacing, exaggeration);
 
     const waterHeightSlider = document.getElementById('waterHeight');
-    waterHeightSlider.max = Math.ceil(maxHeight);
+    waterHeightSlider.max = Math.ceil((maxHeight - minHeight) * 0.5 + minHeight);
     updateWaterPlane(parseFloat(waterHeightSlider.value));
 
     // UI面板数据展示
