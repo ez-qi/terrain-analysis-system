@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import { config } from './config/index.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import proxyRouter from './routes/proxy.js';
@@ -7,6 +8,9 @@ import demRouter from './routes/dem.js';
 import tilesRouter from './routes/tiles.js';
 
 const app = express();
+
+// gzip/deflate 压缩响应（>1kb 自动压缩，PNG 等已压缩内容自动跳过）
+app.use(compression());
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
