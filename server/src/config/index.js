@@ -8,6 +8,7 @@ const root = resolve(__dirname, '../../..'); // server/ → project root
 dotenv.config({ path: resolve(root, '.env') });
 
 export const config = {
+  root,
   deepseekKey: process.env.DEEPSEEK_API_KEY || '',
   tdtTk: process.env.TDT_TK || '',
   port: parseInt(process.env.PORT || '3001'),
