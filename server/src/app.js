@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
+import { resolve } from 'path';
 import { config } from './config/index.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import proxyRouter from './routes/proxy.js';
@@ -22,6 +23,12 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok', port: config.port
 app.use('/api/proxy', proxyRouter);
 app.use('/api/dem', demRouter);
 app.use('/api/tiles', tilesRouter);
+
+// 静态文件：服务前端构建产物 client/dist（生产模式）
+const distDir = resolve(config.root, 'client/dist');
+app.use(express.static(distDir));
+// SPA 根路径回退到 index.html
+app.get('/', (_req, res) => res.sendFile(resolve(distDir, 'index.html')));
 
 // 错误处理
 app.use(notFoundHandler);
