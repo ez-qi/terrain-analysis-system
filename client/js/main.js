@@ -360,6 +360,45 @@ window.onload = async () => {
         });
     }
 
+    // === 可拖拽分隔条：调整侧栏宽度 ===
+    const resizer = document.getElementById('sidebarResizer');
+    const sidebar = document.getElementById('sidebar');
+    let isDragging = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    resizer.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX;
+        startWidth = sidebar.offsetWidth;
+        resizer.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const delta = e.clientX - startX;
+        const min = parseInt(getComputedStyle(sidebar).minWidth, 10) || 280;
+        const max = parseInt(getComputedStyle(sidebar).maxWidth, 10) || 800;
+        const newWidth = Math.min(max, Math.max(min, startWidth + delta));
+        sidebar.style.width = newWidth + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        resizer.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
+
+    // 双击恢复默认宽度
+    resizer.addEventListener('dblclick', () => {
+        sidebar.style.width = '420px';
+    });
+
     generate3DTerrain();
 };
 
