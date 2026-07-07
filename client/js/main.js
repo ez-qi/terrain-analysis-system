@@ -77,87 +77,40 @@ function updateContourWidth(width) {
 }
 
 // ==========================================
-// 卫星贴图：瓦片拼接（国内外一致逻辑，修复国外显示比例失衡）
+// 卫星贴图：静态图统一低精度（国内外一致，避免比例失衡）
 // ==========================================
 function loadSatelliteTexture(material) {
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
         const loadingEl = document.getElementById('loading');
         loadingEl.style.display = 'flex';
         document.getElementById('loadingTitle').innerText = "正在拉取卫星影像";
-        document.getElementById('loadingText').innerText = "正在向天地图获取遥感瓦片并拼接...";
+        document.getElementById('loadingText').innerText = "正在向天地图获取遥感贴图...";
 
-        const meshPhysicalSize = parseFloat(document.getElementById('meshSize').value);
+        // 统一低 zoom：国内外覆盖范围一致，避免国外比例失衡
+        // zoom 8 一张 1024px 静态图覆盖约 625km，国内外一致降精度
+        const optimalZoom = 8;
 
-        // === zoom 选择：单片覆盖 ≈ 选区范围/2，瓦片数 ~2×2 ===
-        // z = log2(79920000 / meshSize)，约束 [12, 17]
-        let z = Math.round(Math.log2(79920000 / meshPhysicalSize));
-        z = Math.min(17, Math.max(12, z));
+        const staticUrl = `/api/tiles/static?lon=${window.activeLon}&lat=${window.activeLat}&zoom=${optimalZoom}`;
 
-        // === 瓦片坐标（天地图 img_w Web Mercator，与 OSM/Google 一致）===
-        const lonRad = window.activeLon * Math.PI / 180;
-        const latRad = window.activeLat * Math.PI / 180;
-        const pow2z = Math.pow(2, z);
-        const centerX = Math.floor((window.activeLon + 180) / 360 * pow2z);
-        const centerY = Math.floor((1 - Math.asinh(Math.tanh(latRad)) / Math.PI) / 2 * pow2z);
-
-        // 取 2×2 邻接瓦片确保覆盖选区
-        const N = 2;
-        const tileSize = 256;
-
-        // === 并行加载所有瓦片，单瓦片失败返回 null 不阻断整体 ===
-        const tilePromises = [];
-        for (let r = 0; r < N; r++) {
-            for (let c = 0; c < N; c++) {
-                const tx = centerX + c;
-                const ty = centerY + r;
-                const url = `/api/tiles/${z}/${tx}/${ty}`;
-                tilePromises.push(
-                    fetch(url)
-                        .then(res => {
-                            if (!res.ok) throw new Error(`瓦片 ${tx}/${ty} 错误: ${res.status}`);
-                            return res.blob();
-                        })
-                        .then(blob => createImageBitmap(blob))
-                        .then(bmp => ({ r, c, bmp }))
-                        .catch(() => null)
-                );
+        const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous');
+        loader.load(
+            staticUrl,
+            function (texture) {
+                material.uniforms.uSatelliteTex.value = texture;
+                material.uniforms.uTextureMode.value = 1.0;
+                material.needsUpdate = true;
+                resolve(true);
+            },
+            undefined,
+            function (err) {
+                console.warn(err);
+                window.showBanner("天地图资源获取失败，本地已自动降级为智能高程分层纹理", true);
+                document.getElementById('textureMode').value = 'procedural';
+                material.uniforms.uTextureMode.value = 0.0;
+                resolve(false);
             }
-        }
-        const results = await Promise.all(tilePromises);
-
-        // 全部失败 → 回退 procedural
-        const anySuccess = results.some(r => r !== null);
-        if (!anySuccess) {
-            console.warn('所有瓦片加载失败');
-            window.showBanner("天地图瓦片获取失败，本地已自动降级为智能高程分层纹理", true);
-            document.getElementById('textureMode').value = 'procedural';
-            material.uniforms.uTextureMode.value = 0.0;
-            resolve(false);
-            return;
-        }
-
-        // === Canvas 拼接 ===
-        const canvas = document.createElement('canvas');
-        canvas.width = N * tileSize;
-        canvas.height = N * tileSize;
-        const ctx = canvas.getContext('2d');
-        for (const tile of results) {
-            if (tile && tile.bmp) {
-                ctx.drawImage(tile.bmp, tile.c * tileSize, tile.r * tileSize);
-            }
-        }
-
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.needsUpdate = true;
-        texture.wrapS = THREE.ClampToEdgeWrapping;
-        texture.wrapT = THREE.ClampToEdgeWrapping;
-        texture.minFilter = THREE.LinearMipMapLinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-
-        material.uniforms.uSatelliteTex.value = texture;
-        material.uniforms.uTextureMode.value = 1.0;
-        material.needsUpdate = true;
-        resolve(true);
+        );
     });
 }
 
