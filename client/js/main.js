@@ -86,18 +86,12 @@ function loadSatelliteTexture(material) {
         document.getElementById('loadingTitle').innerText = "正在拉取卫星影像";
         document.getElementById('loadingText').innerText = "正在向天地图获取遥感贴图...";
 
-        // 国内精度 12-15（按选区尺寸动态），国外固定 12（覆盖范围较小避免比例失衡）
+        // 动态 zoom：贴图覆盖范围 ≈ 选区范围，比例正确
+        // 公式：z = log2(360 × 111000 / meshSize)，约束 [12, 15]
+        // 国内外统一逻辑，按选区尺寸匹配精度
         const meshPhysicalSize = parseFloat(document.getElementById('meshSize').value);
-        let optimalZoom = 13; // 默认 2400m
-        if (meshPhysicalSize <= 1200) optimalZoom = 15;
-        else if (meshPhysicalSize <= 2000) optimalZoom = 14;
-        else if (meshPhysicalSize <= 3500) optimalZoom = 13;
-        else optimalZoom = 12;
-
-        // 边界框：纬度 18-54，经度 73-135（中国大陆主体 + 海南 + 台湾）
-        const isOverseas = window.activeLat < 18 || window.activeLat > 54 ||
-                           window.activeLon < 73 || window.activeLon > 135;
-        if (isOverseas) optimalZoom = 12;  // 国外固定 12，精度降低但覆盖范围可控
+        let optimalZoom = Math.round(Math.log2(360 * 111000 / meshPhysicalSize));
+        optimalZoom = Math.min(15, Math.max(12, optimalZoom));
 
         const staticUrl = `/api/tiles/static?lon=${window.activeLon}&lat=${window.activeLat}&zoom=${optimalZoom}`;
 
