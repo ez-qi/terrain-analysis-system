@@ -86,9 +86,18 @@ function loadSatelliteTexture(material) {
         document.getElementById('loadingTitle').innerText = "正在拉取卫星影像";
         document.getElementById('loadingText').innerText = "正在向天地图获取遥感贴图...";
 
-        // 统一低 zoom：国内外覆盖范围一致，避免国外比例失衡
-        // zoom 8 一张 1024px 静态图覆盖约 625km，国内外一致降精度
-        const optimalZoom = 8;
+        // 国内精度 12-15（按选区尺寸动态），国外固定 12（覆盖范围较小避免比例失衡）
+        const meshPhysicalSize = parseFloat(document.getElementById('meshSize').value);
+        let optimalZoom = 13; // 默认 2400m
+        if (meshPhysicalSize <= 1200) optimalZoom = 15;
+        else if (meshPhysicalSize <= 2000) optimalZoom = 14;
+        else if (meshPhysicalSize <= 3500) optimalZoom = 13;
+        else optimalZoom = 12;
+
+        // 边界框：纬度 18-54，经度 73-135（中国大陆主体 + 海南 + 台湾）
+        const isOverseas = window.activeLat < 18 || window.activeLat > 54 ||
+                           window.activeLon < 73 || window.activeLon > 135;
+        if (isOverseas) optimalZoom = 12;  // 国外固定 12，精度降低但覆盖范围可控
 
         const staticUrl = `/api/tiles/static?lon=${window.activeLon}&lat=${window.activeLat}&zoom=${optimalZoom}`;
 
