@@ -94,6 +94,12 @@ function loadSatelliteTexture(material) {
         else if (meshPhysicalSize <= 3500) optimalZoom = 13;
         else optimalZoom = 12;
 
+        // 国内精度维持，国外精度降级（天地图国外覆盖低）
+        // 边界框：纬度 18-54，经度 73-135（中国大陆主体 + 海南 + 台湾）
+        const isOverseas = window.activeLat < 18 || window.activeLat > 54 ||
+                           window.activeLon < 73 || window.activeLon > 135;
+        if (isOverseas) optimalZoom = Math.min(optimalZoom, 8);  // 国外精度上限 8 级
+
         // 通过后端代理获取天地图卫星影像（隐藏 Token）
         const staticUrl = `/api/tiles/static?lon=${window.activeLon}&lat=${window.activeLat}&zoom=${optimalZoom}`;
 
