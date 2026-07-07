@@ -273,17 +273,22 @@
              const deltaTime = Math.min(rawDelta, 0.1);
  
              const hoursPerStep = (rainTimeSpeed / 60) * deltaTime;
+             const prevHours = rainElapsedHours;
              rainElapsedHours = Math.min(MAX_SIM_HOURS, rainElapsedHours + hoursPerStep);
- 
+
+             // 72h 硬终点：到达后冻结所有累积（时间、降水、水位）
+             const reachedCap = rainElapsedHours >= MAX_SIM_HOURS;
+             const effectiveStep = reachedCap ? 0 : (rainElapsedHours - prevHours);
+
              const precipSlider = document.getElementById('precipitation');
              const rainRate = parseFloat(precipSlider?.value || 0);
-             const stepRain = rainRate * hoursPerStep;
+             const stepRain = rainRate * effectiveStep;
              rainAccumulation += stepRain;
- 
+
              // === 水位累积计算（基于水文参数） ===
-             // Δh = (stepRain × RUNOFF_COEFF - LOSS_RATE × hoursPerStep) × MM_TO_METER
-             // 雨强 > 损失率时水位上升，雨强 < 损失率时水位下降（退水）
-             const deltaHeight = (stepRain * RUNOFF_COEFF - LOSS_RATE * hoursPerStep) * MM_TO_METER;
+             // Δh = (stepRain × RUNOFF_COEFF - LOSS_RATE × effectiveStep) × MM_TO_METER
+             // 72h 后 effectiveStep=0，水位冻结；雨强 < 损失率时水位下降（退水）
+             const deltaHeight = (stepRain * RUNOFF_COEFF - LOSS_RATE * effectiveStep) * MM_TO_METER;
 
              const waterSlider = document.getElementById('waterHeight');
              const currentWater = parseFloat(waterSlider.value) || 0;
@@ -324,7 +329,16 @@
  function toggleRainPlay() {
      window.rainPlaying = !window.rainPlaying;
      lastRainTimestamp = performance.now();
- 
+
+     // 播放期间禁用时间滑条（仅非播放态可拖动调整预测值）
+     const timeSlider = document.getElementById('rainTimeSlider');
+     if (timeSlider) {
+         timeSlider.disabled = window.rainPlaying;
+         timeSlider.title = window.rainPlaying
+             ? '播放期间不可手动调整，请暂停后再拖动'
+             : '';
+     }
+
      const btn = document.getElementById('rainPlayBtn');
      if (window.rainPlaying) {
          if (window.rainSystemInstance) {
@@ -397,7 +411,14 @@
  function resetRainSimulation() {
      rainAccumulation = 0;
      rainElapsedHours = 0;
- 
+
+     // 重置时恢复时间滑条为可拖状态
+     const timeSlider = document.getElementById('rainTimeSlider');
+     if (timeSlider) {
+         timeSlider.disabled = false;
+         timeSlider.title = '';
+     }
+
      const waterSlider = document.getElementById('waterHeight');
      if (waterSlider) {
          waterSlider.value = 0;
