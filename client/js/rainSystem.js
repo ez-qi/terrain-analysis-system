@@ -41,7 +41,7 @@
      torrential: { name: '大暴雨', rate: 150.0,particles: 25000, speed: 3.0 }
  };
  
- let currentRainPreset = 'moderate';
+ let currentRainPreset = null;  // 无默认预设，等用户点击选择
  let rainTimeSpeed = 60;  // 时间流速: 1秒模拟X分钟 (默认60=1小时/分钟)
  
  /**
@@ -229,7 +229,7 @@
      rainAccumulation = 0;
      rainElapsedHours = 0;
      window.rainPlaying = false;
-     currentRainPreset = 'moderate';
+     currentRainPreset = null;
      lastRainTimestamp = performance.now();
  
      window.rainSystemInstance = new RainSystem();
@@ -249,11 +249,12 @@
      const exaggeration = parseFloat(document.getElementById('exaggeration').value) || 1.5;
  
      window.rainSystemInstance.init(window.scene3d, terrainSize, maxHeight * exaggeration + 200);
- 
-     const preset = RAIN_PRESETS[currentRainPreset];
+
+     // 无默认预设时使用 0 粒子数；用户点击预设后才设置强度
+     const preset = currentRainPreset ? RAIN_PRESETS[currentRainPreset] : null;
      const precipVal = parseFloat(document.getElementById('precipitation').value) || 0;
      const intensity = Math.min(1, precipVal / 200);
-     window.rainSystemInstance.setIntensity(intensity, preset.particles);
+     window.rainSystemInstance.setIntensity(intensity, preset ? preset.particles : 0);
      window.rainSystemInstance.setOpacity(window.rainPlaying ? 1.0 : 0.0);
  }
  
