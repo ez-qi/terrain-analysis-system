@@ -5,8 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>区域等高线与三维地形智能分析系统</title>
-
+    <title>区域等高线与三维地形智能分析系统</title>
     <!-- Tailwind CSS 提升界面质感 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 轻量稳定 Leaflet 2D 交互地图 -->
@@ -17,7 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
    
-  <script type="module" crossorigin src="/assets/index-Zkj4hSXX.js"></script>
+  <script type="module" crossorigin src="/assets/index-D2gBOJme.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-DWZ9AS1a.css">
 </head>
 <body>
@@ -189,10 +188,17 @@
                         <span class="text-slate-400">累计降雨: <span id="rainAccumDisplay" class="text-cyan-300 font-bold">0.0</span> mm</span>
                         <span class="text-slate-400">当前雨强: <span id="rainRateDisplay" class="text-blue-300 font-bold">0</span> mm/h</span>
                     </div>
+
+                    <div class="text-[10px] text-slate-500 mt-0.5">
+                        * 拖动时间轴显示当前雨强下的预测值
+                    </div>
+                    <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-40 p-2 rounded mt-1">
+                        <span class="text-slate-400">预测淹没高度: <span id="waterHeightPredictDisplay" class="text-cyan-300 font-bold">0</span> 米</span>
+                    </div>
                     
                     <div class="flex flex-wrap gap-1.5">
                         <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="drizzle" onclick="applyRainPreset('drizzle')">💧 毛毛雨</span>
-                        <span class="rain-preset-btn preset-tag bg-blue-600 text-white border-blue-500" data-preset="moderate" onclick="applyRainPreset('moderate')">🌦️ 中雨</span>
+                        <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="moderate" onclick="applyRainPreset('moderate')">🌦️ 中雨</span>
                         <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="heavy" onclick="applyRainPreset('heavy')">🌧️ 大雨</span>
                         <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="storm" onclick="applyRainPreset('storm')">⛈️ 暴雨</span>
                         <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="torrential" onclick="applyRainPreset('torrential')">🌊 大暴雨</span>
@@ -266,7 +272,6 @@
         content.classList.toggle('active');
     }
 </script>
-
-
+
 </body>
 </html>
