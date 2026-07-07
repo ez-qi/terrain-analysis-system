@@ -1,8 +1,10 @@
   body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: #0b0f19; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #appContainer { display: flex; width: 100vw; height: 100vh; }
-        #sidebar { width: 420px; height: 100vh; background: rgba(15, 23, 42, 0.95); padding: 20px; box-sizing: border-box; overflow-y: auto; z-index: 10; border-right: 1px solid #1e293b; display: flex; flex-direction: column; gap: 15px;  scrollbar-width: none; -ms-overflow-style: none; }
+        #sidebar { width: 420px; min-width: 280px; max-width: 800px; flex-shrink: 0; height: 100vh; background: rgba(15, 23, 42, 0.95); padding: 20px; box-sizing: border-box; overflow-y: auto; z-index: 10; border-right: 1px solid #1e293b; display: flex; flex-direction: column; gap: 15px;  scrollbar-width: none; -ms-overflow-style: none; }
         #sidebar::-webkit-scrollbar { display: none; }
-        #viewport-container { flex-grow: 1; height: 100%; position: relative; }
+        #sidebarResizer { width: 6px; height: 100vh; cursor: col-resize; background: #1e293b; flex-shrink: 0; position: relative; z-index: 11; transition: background 0.2s; }
+        #sidebarResizer:hover, #sidebarResizer.dragging { background: #3b82f6; }
+        #viewport-container { flex-grow: 1; height: 100%; position: relative; min-width: 200px; }
         #leafletMap { width: 100%; height: 180px; border-radius: 8px; border: 1px solid #334155; margin-top: 5px; }
         #threeCanvas { width: 100%; height: 100%; }
         
