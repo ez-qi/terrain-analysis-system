@@ -17,6 +17,9 @@
  const LOSS_RATE = 0.5;            // 蒸发下渗率（mm/h，雨停或弱雨时水位下降）
  const MM_TO_METER = 0.15;         // mm 降雨 → 米水位的视觉化换算系数
 
+ // 独立水位累加器（浮点，不经过滑条字符串量化，避免闪烁）
+ let waterLevelAccum = 0;
+
  /**
   * 计算给定降雨量和时长下的预测淹没高度（米）
   * 公式：netAccum = rainRate × hours × RUNOFF_COEFF - LOSS_RATE × hours
@@ -292,6 +295,11 @@
              const deltaHeight = (stepRain * RUNOFF_COEFF - LOSS_RATE * effectiveStep) * MM_TO_METER;
 
              const waterSlider = document.getElementById('waterHeight');
+            const waterMax = parseFloat(waterSlider.max);
+            // 独立浮点累加，避免滑条字符串量化导致整数边界闪烁
+            waterLevelAccum = Math.min(waterMax, Math.max(0, waterLevelAccum + deltaHeight));
+            waterSlider.value = waterLevelAccum;
+            updateWaterPlane(waterLevelAccum);
              const currentWater = parseFloat(waterSlider.value) || 0;
              const newWater = Math.min(
                  parseFloat(waterSlider.max),
@@ -422,6 +430,7 @@
 
      const waterSlider = document.getElementById('waterHeight');
      if (waterSlider) {
+         waterLevelAccum = 0;
          waterSlider.value = 0;
          window.updateWaterPlane(0);
      }
@@ -478,6 +487,13 @@
          const waterSlider = document.getElementById('waterHeight');
          if (waterSlider) {
              const predictedHeight = predictWaterHeight(rainRate, rainElapsedHours);
+             waterLevelAccum = Math.min(parseFloat(waterSlider.max), predictedHeight);
+             waterSlider.value = waterLevelAccum;
+             window.updateWaterPlane(waterLevelAccum);
+
+             // 同步预测淹没高度显示
+             const predictEl = document.getElementById('waterHeightPredictDisplay');
+             if (predictEl) predictEl.innerText = waterLevelAccum.toFixed(1);
              const newWater = Math.min(parseFloat(waterSlider.max), predictedHeight);
              waterSlider.value = newWater;
              window.updateWaterPlane(newWater);
