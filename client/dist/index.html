@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>区域等高线与三维地形智能分析系统</title>
+    <title>区域等高线与三维地形智能分析系统</title>
+
     <!-- Tailwind CSS 提升界面质感 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 轻量稳定 Leaflet 2D 交互地图 -->
@@ -274,6 +275,287 @@
         content.classList.toggle('active');
     }
 </script>
-
+
+
+</body>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <!-- 强制UTF-8编码，根治页面中文乱码核心 -->
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>区域等高线与三维地形智能分析系统</title>
+
+    <!-- Tailwind CSS 提升界面质感 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 轻量稳定 Leaflet 2D 交互地图 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- 高性能Three.js 三维渲染引擎与控制器 -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+   
+  <script type="module" crossorigin src="/assets/index-ijIzMzhg.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-l9vTUXff.css">
+</head>
+<body>
+<div id="appContainer">
+    <!-- 左侧控制面板 -->
+    <div id="sidebar">
+        <h2 class="text-lg font-bold text-white border-b border-slate-700 pb-2 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            三维地形选区生成平台
+        </h2>
+        
+        <!-- 自然语言搜索定位 -->
+        <div class="p-3 rounded-lg bg-blue-950 bg-opacity-30 border border-blue-800">
+            <label class="block text-xs font-bold text-blue-300 mb-1">📍 输入地名（通过AI获取真实坐标）：</label>
+            <textarea id="aiPrompt" style="height: 40px;" placeholder="输入例如：黄山、华山、九寨沟、可可西里..."></textarea>
+            <button id="aiGenerateBtn" class="btn-ai mt-2">智能定位该地</button>
+        </div>
+
+        <!-- 2D 交互地图选区 -->
+        <div>
+            <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">2D 选区底图 (点击地图重置中心坐标)</label>
+            <div id="leafletMap"></div>
+            <div class="text-[10px] text-slate-500 mt-1 flex justify-between">
+                <span>中心经度: <span id="mapLon" class="text-slate-300">117.1000</span></span>
+                <span>中心纬度: <span id="mapLat" class="text-slate-300">36.2500</span></span>
+            </div>
+        </div>
+
+        <!-- 经典地形快速预设 -->
+        <div>
+            <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">地标地形预设：</label>
+            <div class="flex flex-wrap gap-1.5">
+                <span class="preset-tag" onclick="selectPreset(117.1000, 36.2500, '泰北')">🏔️ 泰北</span>
+                <span class="preset-tag" onclick="selectPreset(118.1800, 30.1300, '黄山')">⛰️ 黄山</span>
+                <span class="preset-tag" onclick="selectPreset(110.0833, 34.4833, '华山')">⛰️ 华山</span>
+                <span class="preset-tag" onclick="selectPreset(117.0200, 28.1800, '龙虎山')">🏞️ 龙虎山</span>
+                <span class="preset-tag" onclick="selectPreset(138.7275, 35.3606, '富士山')">⛰️ 富士山</span>
+            </div>
+        </div>
+
+        <!-- 3D 渲染控制参数 -->
+        <div class="border-t border-slate-800 pt-3 flex flex-col gap-3">
+            <!-- 空间几何控制 - 下拉菜单 -->
+            <div class="collapsible-menu">
+                <div class="menu-header active" onclick="toggleMenu(this)">
+                    <span>📐 空间几何控制</span>
+                    <span class="menu-toggle-icon">▼</span>
+                </div>
+                <div class="menu-content active">
+                    <div class="menu-items">
+                        <div class="slider-container">
+                            <label><span>三维展示平面范围 (选区范围)</span> <span id="meshSizeVal" class="text-emerald-400 font-bold">2400 米</span></label>
+                            <input type="range" id="meshSize" min="1000" max="5000" step="200" value="2400">
+                        </div>
+
+                        <div class="slider-container">
+                            <label><span>垂直高度缩放系数</span> <span id="exaggerationVal" class="text-blue-400 font-bold">1.5</span></label>
+                            <input type="range" id="exaggeration" min="0.5" max="3.0" step="0.1" value="1.5">
+                        </div>
+
+                        <div class="slider-container">
+                            <label><span>地形解析精度 (网格分辨率)</span> <span id="gridSizeVal">128</span></label>
+                            <input type="range" id="gridSize" min="64" max="256" step="16" value="128">
+                        </div>
+                        
+                        <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-50 p-2 rounded border border-slate-800">
+                            <span class="text-slate-300">显示网格三角剖面 (线框模式)</span>
+                            <input type="checkbox" id="showWireframe" class="w-4 h-4 cursor-pointer" onchange="toggleWireframe()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 物理等高线设置 - 下拉菜单 -->
+            <div class="collapsible-menu">
+                <div class="menu-header active" onclick="toggleMenu(this)">
+                    <span>📏 物理等高线设置</span>
+                    <span class="menu-toggle-icon">▼</span>
+                </div>
+                <div class="menu-content active">
+                    <div class="menu-items">
+                        <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-40 p-2 rounded border border-slate-800">
+                            <span class="text-slate-300">自动适配等高线间距</span>
+                            <input type="checkbox" id="autoContourSpacing" checked class="w-4 h-4 cursor-pointer" onchange="toggleAutoSpacing()">
+                        </div>
+
+                        <div class="slider-container" id="manualContourGroup">
+                            <label><span>GPU 等高线间隔</span> <span id="contourSpacingVal" class="text-blue-400 font-bold">100 米</span></label>
+                            <input type="range" id="contourSpacing" min="5" max="400" step="5" value="100">
+                        </div>
+
+                        <div class="slider-container">
+                            <label><span>等高线线条粗细 (像素)</span> <span id="contourLineWidthVal" class="text-blue-400 font-bold">1.3 像素</span></label>
+                            <input type="range" id="contourLineWidth" min="0.5" max="4.0" step="0.1" value="1.3" oninput="updateContourWidth(this.value)">
+                        </div>
+
+                        <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-40 p-2 rounded">
+                            <span class="text-slate-300">在等高线上显示高程标注</span>
+                            <input type="checkbox" id="showLabels" checked class="w-4 h-4 cursor-pointer" onchange="toggleLabels()">
+                        </div>
+
+                        <div class="slider-container" id="labelOffsetGroup">
+                            <label><span>高程标签高度偏移 (Z轴偏移)</span> <span id="labelOffsetVal" class="text-blue-400 font-bold">25 米</span></label>
+                            <input type="range" id="labelOffset" min="0" max="150" step="5" value="25" oninput="updateLabelOffset(this.value)">
+                        </div>
+
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-400">等高线覆盖颜色</span>
+                            <input type="color" id="contourColor" value="#ff0000" class="w-8 h-6 border-0 cursor-pointer bg-transparent">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 环境与生态仿真渲染 - 下拉菜单 -->
+            <div class="collapsible-menu">
+                <div class="menu-header active" onclick="toggleMenu(this)">
+                    <span>🌊 环境与生态仿真渲染</span>
+                    <span class="menu-toggle-icon">▼</span>
+                </div>
+                <div class="menu-content active">
+                    <div class="menu-items">
+                        <div class="slider-container">
+                            <label><span>低洼积水/淹没模拟高度</span> <span id="waterHeightVal" class="text-cyan-400 font-bold">0 米</span></label>
+                            <input type="range" id="waterHeight" min="0" max="3000" step="5" value="0" oninput="updateWaterPlane(this.value)">
+                        </div>
+
+                        <div class="slider-container">
+                            <label><span>日光水平方位角</span> <span id="lightAzimuthVal" class="text-yellow-400 font-bold">45°</span></label>
+                            <input type="range" id="lightAzimuth" min="0" max="360" step="5" value="45" oninput="updateSunDirection(this.value)">
+                        </div>
+
+                        <div class="slider-container">
+                            <label><span>AI 生态灾害模拟降雨量</span> <span id="precipVal" class="text-cyan-400 font-bold">0 mm</span></label>
+                            <input type="range" id="precipitation" min="0" max="800" step="10" value="0">
+                        </div>
+
+                        <div class="flex items-center justify-between bg-slate-900 bg-opacity-50 p-2 rounded border border-slate-800 text-xs">
+                            <span class="text-slate-400">材质贴图来源</span>
+                            <select id="textureMode" class="bg-slate-800 text-white rounded p-1 outline-none">
+                                <option value="satellite">🛰️ 卫星真实遥感影像</option>
+                                <option value="procedural">🏔️ 智能高程分层渲染</option>
+                                <option value="riskMap">🌪️ AI 灾害热力风险图</option>
+                            </select>
+                        </div>
+
+                        <button id="aiEcoBtn" class="btn-ai mt-2">🌫️ 一键AI生态要素提取与灾害推演</button>
+                    </div>
+                </div>
+            </div>
+
+             <!-- 降雨模拟与时序控制 - 下拉菜单 -->
+        <div class="collapsible-menu">
+            <div class="menu-header active" onclick="toggleMenu(this)">
+                <span>🌧️ 降雨模拟与时序控制</span>
+                <span class="menu-toggle-icon">▼</span>
+            </div>
+            <div class="menu-content active">
+                <div class="menu-items">
+                    <div class="slider-container">
+                        <label><span>模拟时间进度 (0-72h)</span> <span id="rainTimeDisplay" class="text-cyan-400 font-bold">00:00</span></label>
+                        <input type="range" id="rainTimeSlider" min="0" max="72" step="0.5" value="0" oninput="onRainTimeSliderChange(this.value)">
+                    </div>
+                    
+                    <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-40 p-2 rounded">
+                        <span class="text-slate-400">累计降雨: <span id="rainAccumDisplay" class="text-cyan-300 font-bold">0.0</span> mm</span>
+                        <span class="text-slate-400">当前雨强: <span id="rainRateDisplay" class="text-blue-300 font-bold">0</span> mm/h</span>
+                    </div>
+
+                    <div class="text-[10px] text-slate-500 mt-0.5">
+                        * 拖动时间轴显示当前雨强下的预测值
+                    </div>
+                    <div class="flex items-center justify-between text-xs bg-slate-900 bg-opacity-40 p-2 rounded mt-1">
+                        <span class="text-slate-400">预测淹没高度: <span id="waterHeightPredictDisplay" class="text-cyan-300 font-bold">0</span> 米</span>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-1.5">
+                        <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="drizzle" onclick="applyRainPreset('drizzle')">💧 毛毛雨</span>
+                        <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="moderate" onclick="applyRainPreset('moderate')">🌦️ 中雨</span>
+                        <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="heavy" onclick="applyRainPreset('heavy')">🌧️ 大雨</span>
+                        <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="storm" onclick="applyRainPreset('storm')">⛈️ 暴雨</span>
+                        <span class="rain-preset-btn preset-tag bg-slate-700 text-slate-300 border-slate-600" data-preset="torrential" onclick="applyRainPreset('torrential')">🌊 大暴雨</span>
+                    </div>
+                    
+                    <div class="flex gap-1.5">
+                        <span class="speed-btn preset-tag bg-blue-600 text-white" data-speed="60" onclick="setRainTimeSpeed(60)">1x</span>
+                        <span class="speed-btn preset-tag bg-slate-700 text-slate-300" data-speed="300" onclick="setRainTimeSpeed(300)">5x</span>
+                        <span class="speed-btn preset-tag bg-slate-700 text-slate-300" data-speed="600" onclick="setRainTimeSpeed(600)">10x</span>
+                        <span class="speed-btn preset-tag bg-slate-700 text-slate-300" data-speed="1800" onclick="setRainTimeSpeed(1800)">30x</span>
+                        <span class="speed-btn preset-tag bg-slate-700 text-slate-300" data-speed="3600" onclick="setRainTimeSpeed(3600)">60x</span>
+                        <span class="text-[10px] text-slate-500 ml-auto self-center">倍速</span>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button id="rainPlayBtn" class="btn-ai" onclick="toggleRainPlay()" style="flex:1">▶ 播放</button>
+                        <button class="btn-primary" onclick="resetRainSimulation()" style="flex:0.5;background:linear-gradient(135deg,#64748b,#475569)">↺ 重置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+        
+       
+
+        <div id="ecoResultPanel" class="control-group hidden">
+            <div class="text-xs text-blue-400 font-bold mb-1">AI 生态灾害分析结果</div>
+            <div class="text-xs text-slate-300 mb-1">气候: <span id="ecoClimate" class="text-white">--</span></div>
+            <div class="text-xs text-slate-300 mb-1">土壤: <span id="ecoSoil" class="text-white">--</span></div>
+            <div class="text-xs text-slate-300">植被覆盖率: <span id="ecoVegBase" class="text-emerald-400 font-semibold">--</span></div>
+        </div>
+
+        <button id="generateBtn" class="btn-primary mt-1">🗺️ 生成对应选区局部地形</button>
+    </div>
+
+    <!-- 可拖拽分隔条 -->
+    <div id="sidebarResizer" title="拖动调整侧栏宽度"></div>
+
+    <!-- 右侧 3D 视口容器 -->
+    <div id="viewport-container" class="flex-grow">
+        <div id="threeCanvas"></div>
+        <div id="notification-banner"></div>
+
+        <!-- 单点高程实时测量面板 -->
+        <div class="info-panel text-white flex flex-col gap-1 w-64" id="measurementPanel">
+            <div class="font-bold mb-1 text-blue-400 flex items-center gap-1 text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                所选局部区域概况
+            </div>
+            <div class="text-xs text-slate-300">区域名称: <span id="measureName" class="text-white font-semibold">泰北</span></div>
+            <div class="text-xs text-slate-300">高程数据源: <span id="measureStyle" class="text-yellow-400 font-semibold">SRTM 真实地形</span></div>
+            <div class="text-xs text-slate-300">区域中心: <span id="measureCoord" class="text-white font-mono">117.1000, 36.2500</span></div>
+            <div class="text-xs text-slate-300">选点高程: <span id="measureHeight" class="text-emerald-400 font-bold font-mono">-- 米</span></div>
+            <div class="text-[10px] text-slate-500 mt-1 border-t border-slate-800 pt-1">* 提示: 鼠标左键点击 3D 模型表面可高精度测高</div>
+        </div>
+
+        <!-- 加载遮罩 -->
+        <div id="loading">
+            <div class="spinner"></div>
+            <div class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 tracking-widest mb-1" id="loadingTitle">大数据地形解析中...</div>
+            <div class="text-xs text-gray-400" id="loadingText">正在查询该区域地形结构要素...</div>
+        </div>
+    </div>
+</div>
+
+<!-- 折叠菜单交互脚本 -->
+<script>
+    function toggleMenu(headerEl) {
+        const content = headerEl.nextElementSibling;
+        headerEl.classList.toggle('active');
+        content.classList.toggle('active');
+    }
+</script>
+
+
 </body>
 </html>

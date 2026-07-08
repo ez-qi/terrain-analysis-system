@@ -300,6 +300,13 @@
             waterLevelAccum = Math.min(waterMax, Math.max(0, waterLevelAccum + deltaHeight));
             waterSlider.value = waterLevelAccum;
             updateWaterPlane(waterLevelAccum);
+             const currentWater = parseFloat(waterSlider.value) || 0;
+             const newWater = Math.min(
+                 parseFloat(waterSlider.max),
+                 Math.max(0, currentWater + deltaHeight)
+             );
+             waterSlider.value = newWater;
+             updateWaterPlane(newWater);
  
              // 更新粒子动画
              const speedMult = Math.max(0.1, (rainRate / 80) * 2);
@@ -487,6 +494,13 @@
              // 同步预测淹没高度显示
              const predictEl = document.getElementById('waterHeightPredictDisplay');
              if (predictEl) predictEl.innerText = waterLevelAccum.toFixed(1);
+             const newWater = Math.min(parseFloat(waterSlider.max), predictedHeight);
+             waterSlider.value = newWater;
+             window.updateWaterPlane(newWater);
+
+             // 同步预测淹没高度显示
+             const predictEl = document.getElementById('waterHeightPredictDisplay');
+             if (predictEl) predictEl.innerText = newWater.toFixed(1);
          }
          updateRainUI();
      }
