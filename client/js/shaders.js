@@ -92,12 +92,14 @@ void main() {
 
         // C. WLC 加权线性叠加
         // 静态因子权重压缩（和 ≈ 0.45），让初始为绿；降水占主导 0.55
+        // 降水贡献乘坡度门槛：平原无坡不升风险（降水再多也只是积水不滑坡）
+        float slopeGate = smoothstep(0.05, 0.3, slope);
         float risk = 0.0;
         risk += 0.15 * slopeFactor;           // 坡度贡献
         risk += 0.10 * (1.0 - vegFactor);     // 植被缺失贡献
         risk += 0.10 * soilFactor;            // 土壤贡献
         risk += 0.10 * lithFactor;            // 岩层贡献
-        risk += 0.55 * precipFactor;          // 降水贡献（线性主导）
+        risk += 0.55 * precipFactor * slopeGate;  // 降水贡献（平原无坡不升风险）
         risk *= histBoost;
         risk = clamp(risk, 0.0, 1.0);
 
