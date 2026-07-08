@@ -218,7 +218,24 @@ async function generate3DTerrain() {
             uWaterHeight: { value: initialWaterHeight },
             uPrecipitation: { value: parseFloat(document.getElementById('precipitation')?.value || 0) },
             uBaseVeg: { value: 0.7 },
-            uTime: { value: 0.0 }
+            uTime: { value: 0.0 },
+            // 灾害风险演化 uniforms（WLC 加权线性叠加，权重之和约 1.0）
+            uSoilWeight: { value: 0.2 },
+            uLithologyWeight: { value: 0.2 },
+            uVegWeight: { value: 0.2 },
+            uSlopeWeight: { value: 0.3 },
+            uVegRootDepth: { value: 1.5 },
+            uHistDensity: { value: 0.3 },
+            uFaultProx: { value: 0.2 },
+            uCriticalPrecip: { value: 200 },
+            uRiskDelay: { value: 2.0 },
+            uRiskDecay: { value: 0.3 },
+            uSoilFactor: { value: 0.5 },
+            uLithologyFactor: { value: 0.5 },
+            uRainAccum: { value: 0 },
+            uTimeSinceRain: { value: 0 },
+            uSoilPermeability: { value: 15 },   // 土壤渗透率 mm/h
+            uMaxAbsorption: { value: 100 }      // 地形最大蓄水量 mm
         },
         extensions: { derivatives: true }
     });
@@ -338,19 +355,31 @@ window.onload = async () => {
                 aiEcoBtn.innerText = "AI地形深度分析中...";
                 const ecoData = await window.fetchEcoDisasterAnalysis(window.activeName);
 
+                // 填充只读摘要面板
                 const ecoClimateEl = document.getElementById('ecoClimate');
                 const ecoSoilEl = document.getElementById('ecoSoil');
                 const ecoVegBaseEl = document.getElementById('ecoVegBase');
                 const ecoResultPanel = document.getElementById('ecoResultPanel');
-
                 if (ecoClimateEl) ecoClimateEl.innerText = ecoData.climate || "N/A";
                 if (ecoSoilEl) ecoSoilEl.innerText = ecoData.soil || "N/A";
                 if (ecoVegBaseEl) ecoVegBaseEl.innerText = ecoData.baseVegCoverage != null ? ecoData.baseVegCoverage : "N/A";
                 if (ecoResultPanel) ecoResultPanel.classList.remove('hidden');
 
-                if (window.terrainMesh && window.terrainMesh.material.uniforms && window.terrainMesh.material.uBaseVeg) {
-                    window.terrainMesh.material.uniforms.uBaseVeg.value = parseFloat(ecoData.baseVegCoverage) || 0.7;
-                }
+                // 填充可编辑元数据面板
+                setMetaField('metaClimate', ecoData.climate);
+                setMetaField('metaSoil', ecoData.soil);
+                setMetaField('metaLithology', ecoData.lithology);
+                setMetaField('metaVegType', ecoData.vegType);
+                setMetaField('metaVegRootDepth', ecoData.vegRootDepth ?? 1.5);
+                setMetaField('metaBaseVeg', ecoData.baseVegCoverage ?? 0.75);
+                setMetaField('metaHistDensity', ecoData.historicalLandslideDensity ?? 0.3);
+                setMetaField('metaFaultProx', ecoData.faultZoneProximity ?? 0.2);
+                setMetaField('metaCriticalPrecip', ecoData.criticalPrecip ?? 200);
+                setMetaField('metaRiskDelay', ecoData.riskDelay ?? 2.0);
+                setMetaField('metaRiskDecay', ecoData.riskDecay ?? 0.3);
+
+                // 推入 shader uniforms
+                applyDisasterMetaToShader();
 
                 document.getElementById('textureMode').value = 'riskMap';
                 generate3DTerrain();
@@ -362,6 +391,70 @@ window.onload = async () => {
             }
         });
     }
+
+    // === 灾害元数据：土壤/岩层文本 → 归一化因子映射表 ===
+    const SOIL_FACTOR_MAP = {
+        '黏土': 0.9, '黄壤': 0.7, '红壤': 0.6, '残积土': 0.8,
+        '砂土': 0.3, '壤土': 0.5, '泥石流': 1.0, '砾': 0.4
+    };
+    const LITHOLOGY_FACTOR_MAP = {
+        '泥岩': 0.9, '页岩': 0.8, '砂岩': 0.4, '花岗岩': 0.2,
+        '灰岩': 0.3, '层状': 0.7, '石英': 0.1, '板岩': 0.6
+    };
+
+    function textToFactor(text, map, fallback = 0.5) {
+        if (!text || typeof text !== 'string') return fallback;
+        for (const [key, val] of Object.entries(map)) {
+            if (text.includes(key)) return val;
+        }
+        return fallback;
+    }
+
+    function setMetaField(id, value) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = value;
+        const valEl = document.getElementById(id + 'Val');
+        if (valEl) {
+            const suffix = valEl.innerText.split(' ').slice(1).join(' ');
+            valEl.innerText = value + (suffix ? ' ' + suffix : '');
+        }
+    }
+
+    // 把元数据面板字段推入 shader uniforms（含映射表换算）
+    function applyDisasterMetaToShader() {
+        if (!window.terrainMesh || !window.terrainMesh.material.uniforms) return;
+        const u = window.terrainMesh.material.uniforms;
+        const get = (id, fallback = 0) => parseFloat(document.getElementById(id)?.value || fallback);
+
+        u.uBaseVeg.value = get('metaBaseVeg', 0.7);
+        u.uVegRootDepth.value = get('metaVegRootDepth', 1.5);
+        u.uHistDensity.value = get('metaHistDensity', 0.3);
+        u.uFaultProx.value = get('metaFaultProx', 0.2);
+        u.uCriticalPrecip.value = get('metaCriticalPrecip', 200);
+        u.uRiskDelay.value = get('metaRiskDelay', 2.0);
+        u.uRiskDecay.value = get('metaRiskDecay', 0.3);
+        u.uSlopeWeight.value = 0.3;
+        u.uVegWeight.value = 0.2;
+        u.uSoilWeight.value = 0.2;
+        u.uLithologyWeight.value = 0.2;
+        u.uSoilPermeability.value = get('metaSoilPermeability', 15);
+        u.uMaxAbsorption.value = get('metaMaxAbsorption', 100);
+
+        const soilText = document.getElementById('metaSoil')?.value || '';
+        const lithText = document.getElementById('metaLithology')?.value || '';
+        u.uSoilFactor.value = textToFactor(soilText, SOIL_FACTOR_MAP, 0.5);
+        u.uLithologyFactor.value = textToFactor(lithText, LITHOLOGY_FACTOR_MAP, 0.5);
+    }
+
+    // 绑定元数据面板字段 oninput → 实时推入 shader
+    ['metaBaseVeg', 'metaVegRootDepth', 'metaHistDensity', 'metaFaultProx',
+     'metaCriticalPrecip', 'metaRiskDelay', 'metaRiskDecay',
+     'metaSoilPermeability', 'metaMaxAbsorption',
+     'metaSoil', 'metaLithology'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', applyDisasterMetaToShader);
+    });
 
     // === 可拖拽分隔条：调整侧栏宽度 ===
     const resizer = document.getElementById('sidebarResizer');

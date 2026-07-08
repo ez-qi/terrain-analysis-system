@@ -10,12 +10,14 @@
  window.window.rainPlaying = false;          // 播放状态
  let rainElapsedHours = 0;         // 经过的模拟小时数
  let lastRainTimestamp = 0;        // 上次更新时间戳
+ let timeSinceRain = 0;            // 距上次有效降雨的小时数（雨停后递增，下雨中归零）
  const MAX_SIM_HOURS = 72;         // 最大模拟小时数
 
  // === 水文参数（水位动态累积） ===
  const RUNOFF_COEFF = 0.6;         // 有效降雨系数（多少降雨转化为积水，其余下渗）
  const LOSS_RATE = 0.5;            // 蒸发下渗率（mm/h，雨停或弱雨时水位下降）
- const MM_TO_METER = 0.15;         // mm 降雨 → 米水位的视觉化换算系数
+ const MM_TO_METER = 0.05;         // mm 降雨 → 米水位的视觉化换算系数（降速避免水位过激）
+ const RAIN_STOP_THRESHOLD = 2.0;  // 低于此雨强视为雨停，开始滞后回落（毛毛雨2.5仍算下雨）
 
  // 独立水位累加器（浮点，不经过滑条字符串量化，避免闪烁）
  let waterLevelAccum = 0;
@@ -301,19 +303,26 @@
             waterSlider.value = waterLevelAccum;
             updateWaterPlane(waterLevelAccum);
  
+             // 维护 timeSinceRain：有效降雨时归零，雨停后递增
+             if (rainRate > RAIN_STOP_THRESHOLD) {
+                 timeSinceRain = 0;
+             } else {
+                 timeSinceRain += effectiveStep;
+             }
+
              // 更新粒子动画
              const speedMult = Math.max(0.1, (rainRate / 80) * 2);
              window.rainSystemInstance.update(deltaTime, speedMult);
- 
+
              updateRainUI();
- 
+
              if (window.terrainMesh && window.terrainMesh.material.uniforms) {
-                 if (window.terrainMesh.material.uniforms.uPrecipitation) {
-                     window.terrainMesh.material.uniforms.uPrecipitation.value = rainRate;
-                 }
-                 if (window.terrainMesh.material.uniforms.uTime) {
-                     window.terrainMesh.material.uniforms.uTime.value += deltaTime * 2;
-                 }
+                 const u = window.terrainMesh.material.uniforms;
+                 if (u.uPrecipitation) u.uPrecipitation.value = rainRate;
+                 if (u.uTime) u.uTime.value += deltaTime * 2;
+                 // 推入累计降水与距雨时间，供 shader 风险演化
+                 if (u.uRainAccum) u.uRainAccum.value = rainAccumulation;
+                 if (u.uTimeSinceRain) u.uTimeSinceRain.value = timeSinceRain;
              }
          } else if (window.rainSystemInstance) {
              if (window.terrainMesh && window.terrainMesh.material.uniforms && window.terrainMesh.material.uniforms.uTime) {
@@ -413,6 +422,7 @@
  function resetRainSimulation() {
      rainAccumulation = 0;
      rainElapsedHours = 0;
+     timeSinceRain = 0;
 
      // 重置时恢复时间滑条为可拖状态
      const timeSlider = document.getElementById('rainTimeSlider');

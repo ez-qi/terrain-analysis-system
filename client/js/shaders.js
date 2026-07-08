@@ -34,6 +34,24 @@ uniform float uTime;
 uniform float uPrecipitation; // 降水量 (mm)
 uniform float uBaseVeg;       // AI评估的基准植被覆盖率 (0.0~1.0)
 
+// 【扩展】多因子权重 + 临界阈值 + 累计降水演化
+uniform float uSoilWeight;
+uniform float uLithologyWeight;
+uniform float uVegWeight;
+uniform float uSlopeWeight;
+uniform float uVegRootDepth;
+uniform float uHistDensity;
+uniform float uFaultProx;
+uniform float uCriticalPrecip;
+uniform float uRiskDelay;
+uniform float uRiskDecay;
+uniform float uSoilFactor;
+uniform float uLithologyFactor;
+uniform float uRainAccum;
+uniform float uTimeSinceRain;
+uniform float uSoilPermeability;   // 土壤渗透率（mm/h）
+uniform float uMaxAbsorption;      // 地形最大蓄水量（mm）
+
 void main() {
     vec3 baseColor;
     vec3 norm = normalize(vNormal);
@@ -43,39 +61,53 @@ void main() {
 
     if (uTextureMode > 1.5) {
         // ==========================================
-        // 🚨 模式3：滑坡/泥石流灾害风险热力图
+        // 🚨 模式3：滑坡/泥石流灾害风险热力图（WLC 加权线性叠加）
+        // 业内基础法：各因子归一化 0~1，按权重加权求和，无乘积饱和
         // ==========================================
-        
-        // A. 提取山体坡向 (Aspect): 假定 Z>0为南(向阳), Z<0为北(向阴)
-        float aspect = dot(normalize(vec3(norm.x, 0.0, norm.z)), vec3(0.0, 0.0, 1.0));
-        
-        // B. 植被覆盖动态修正模型
-        // 坡度越陡峭 (slope > 0.4)，植被越难以附着，覆盖率断崖式下跌
-        float slopePenalty = smoothstep(0.3, 0.7, slope);
-        float localVeg = uBaseVeg * (1.0 - slopePenalty * 0.8);
-        
-        // 向阴面(北坡)土壤水分挥发少，植被通常好于向阳面
-        localVeg += (aspect < 0.0 ? 0.08 : -0.05); 
-        localVeg = clamp(localVeg, 0.0, 1.0);
-        
-        // C. 灾害风险动力学公式 (Heuristic Model)
-        // 风险正比于坡度骤变因子、降水因子，反比于局部植被固土能力
-        float precipFactor = clamp(uPrecipitation / 800.0, 0.0, 1.0);
-        float slopeRisk = smoothstep(0.15, 0.65, slope); // 危险坡度区间
-        
-        // 综合灾害指数 (0.0 ~ 1.0)
-        float risk = slopeRisk * precipFactor * (1.2 - localVeg);
+
+        // A. 各地形因子归一化（0~1）
+        float slopeFactor = smoothstep(0.15, 0.65, slope);
+        float vegFactor = clamp(uBaseVeg * smoothstep(0.0, 2.0, uVegRootDepth), 0.0, 1.0);
+        float soilFactor = clamp(uSoilFactor, 0.0, 1.0);
+        float lithFactor = clamp(uLithologyFactor * (1.0 + uFaultProx), 0.0, 1.0);
+
+        // B. 土壤渗透与水量平衡
+        // 渗透量 = 渗透率 × 时间 × (1 − 植被截留系数)，被最大蓄水量封顶
+        float absorbed = uSoilPermeability * uTimeSinceRain * (1.0 - uBaseVeg * 0.3);
+        absorbed = min(absorbed, uMaxAbsorption);
+        // 有效降水 = 累计降雨 − 已渗透吸收量
+        float effectivePrecip = max(0.0, uRainAccum - absorbed);
+        // 净水量风险 = 有效降水 / 临界阈值（超过吸收能力才升风险）
+        float precipFactor = clamp(effectivePrecip / max(1.0, uCriticalPrecip), 0.0, 1.0);
+
+        // 雨停滞后回落：timeSinceRain > riskDelay 后按 riskDecay 加速退水
+        float decayReduction = 0.0;
+        if (uTimeSinceRain > uRiskDelay) {
+            decayReduction = (uTimeSinceRain - uRiskDelay) * uRiskDecay;
+        }
+        precipFactor *= max(0.0, 1.0 - decayReduction);
+
+        // 历史密度加成（复发地带加成，最高 +50%）
+        float histBoost = 1.0 + uHistDensity * 0.5;
+
+        // C. WLC 加权线性叠加
+        // 静态因子权重压缩（和 ≈ 0.45），让初始为绿；降水占主导 0.55
+        float risk = 0.0;
+        risk += 0.15 * slopeFactor;           // 坡度贡献
+        risk += 0.10 * (1.0 - vegFactor);     // 植被缺失贡献
+        risk += 0.10 * soilFactor;            // 土壤贡献
+        risk += 0.10 * lithFactor;            // 岩层贡献
+        risk += 0.55 * precipFactor;          // 降水贡献（线性主导）
+        risk *= histBoost;
         risk = clamp(risk, 0.0, 1.0);
-        
+
         // D. 热力图设色 (绿 -> 黄 -> 橙 -> 红)
-        vec3 safeColor = vec3(0.1, 0.7, 0.2);   // 安全区 (低风险)
-        vec3 warnColor = vec3(0.9, 0.8, 0.1);   // 警告区 (黄)
-        vec3 dangerColor = vec3(0.9, 0.1, 0.1); // 极危区 (红)
-        
+        vec3 safeColor = vec3(0.1, 0.7, 0.2);
+        vec3 warnColor = vec3(0.9, 0.8, 0.1);
+        vec3 dangerColor = vec3(0.9, 0.1, 0.1);
         vec3 riskColor = mix(safeColor, warnColor, smoothstep(0.0, 0.5, risk));
         riskColor = mix(riskColor, dangerColor, smoothstep(0.5, 1.0, risk));
-        
-        // 与地形灰度叠加保留立体凹凸阴影感
+
         float gray = dot(vec3(0.38, 0.31, 0.21), vec3(0.333));
         baseColor = mix(vec3(gray), riskColor, 0.85);
 
